@@ -11,9 +11,6 @@
 
 #define NULL 0
 
-
-
-
 typedef void (*testfunc)(void);
 
 typedef struct Test {
@@ -35,7 +32,8 @@ void runt(Test test)
         *child_done = 1;
     } else {
         int timeout = test.timeout > 0 ? test.timeout : default_timeout;
-        for(int time_slept = 0; *child_done == 0 && time_slept < timeout; time_slept++){
+        for(int time_slept = 0; *child_done == 0 && time_slept < timeout; time_slept++)
+        {
             sleep(1);
         }
     }
@@ -58,7 +56,7 @@ void assert_lt_ints(int x, int y) {
 
 void assert_lte_ints(int x, int y) {
     if(x <= y) return;
-    fprintf(stderr, "Assertion failed! Condition: %d < %d isn't satisfied\n", x, y);
+    fprintf(stderr, "Assertion failed! Condition: %d <= %d isn't satisfied\n", x, y);
     exit(0);
 }
 
@@ -99,12 +97,14 @@ static Test tests[] = {
 
 void run_all_tests()
 {
-    for(int i=0; strcmp(tests[i].name, END_OF_TESTS_LIST) != 0; i++) {
+    for(int i=0; strcmp(tests[i].name, END_OF_TESTS_LIST) != 0; i++)
+    {
         runt(tests[i]);
     }
 }
 
-int main() {
+int main() 
+{
     run_all_tests();
     exit(0);
 }
