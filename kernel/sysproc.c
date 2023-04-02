@@ -12,10 +12,12 @@ sys_exit(void)
   int n;
   char msg[MAXMSG];
   argint(0, &n);
-  if(argstr(0, msg, MAXMSG) < 0) 
+  int string_len;
+  if((string_len = argstr(1, msg, MAXMSG)) < 0) 
   {
     return -1;
   }
+  
   exit(n, msg);
   return 0;  // not reached
 }
@@ -36,8 +38,10 @@ uint64
 sys_wait(void)
 {
   uint64 p;
+  uint64 msg_out;
   argaddr(0, &p);
-  return wait(p);
+  argaddr(0, &msg_out);
+  return wait(p, msg_out);
 }
 
 uint64

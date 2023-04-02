@@ -397,7 +397,7 @@ exit(int status, char* exit_msg)
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(uint64 addr)
+wait(uint64 addr, uint64 msg_out)
 {
   struct proc *pp;
   int havekids, pid;
@@ -417,8 +417,13 @@ wait(uint64 addr)
         if(pp->state == ZOMBIE){
           // Found one.
           pid = pp->pid;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
-                                  sizeof(pp->xstate)) < 0) {
+
+          // printf("%d\n", pp->xstate);
+          // printf("%s\n", pp->exit_msg);
+          if(addr != 0 &&
+              (copyout(p->pagetable, msg_out, pp->exit_msg - 8, strlen(pp->exit_msg) + 8) < 0 ||
+                copyout(p->pagetable, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0)) 
+          {
             release(&pp->lock);
             release(&wait_lock);
             return -1;

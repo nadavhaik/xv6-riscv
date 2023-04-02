@@ -187,7 +187,7 @@ copyinstr2(char *s)
   }
 
   int st = 0;
-  wait(&st);
+  wait_nomsg(&st);
   if(st != 747){
     printf("exec(echo, BIG) succeeded, should have failed\n");
     exit_nomsg(1);
@@ -414,7 +414,7 @@ truncate3(char *s)
     close(fd);
   }
 
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   unlink("truncfile");
   exit_nomsg(xstatus);
 }
@@ -468,7 +468,7 @@ exitiputtest(char *s)
     }
     exit_nomsg(0);
   }
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   exit_nomsg(xstatus);
 }
 
@@ -510,7 +510,7 @@ openiputtest(char *s)
     printf("%s: unlink failed\n", s);
     exit_nomsg(1);
   }
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   exit_nomsg(xstatus);
 }
 
@@ -705,8 +705,8 @@ exectest(char *s)
     }
     // won't get to here
   }
-  if (wait(&xstatus) != pid) {
-    printf("%s: wait failed!\n", s);
+  if (wait_nomsg(&xstatus) != pid) {
+    printf("%s: wait_nomsg failed!\n", s);
   }
   if(xstatus != 0)
     exit_nomsg(xstatus);
@@ -777,7 +777,7 @@ pipe1(char *s)
       exit_nomsg(1);
     }
     close(fds[0]);
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     exit_nomsg(xstatus);
   } else {
     printf("%s: fork() failed\n", s);
@@ -806,7 +806,7 @@ killstatus(char *s)
     }
     sleep(1);
     kill(pid1);
-    wait(&xst);
+    wait_nomsg(&xst);
     if(xst != -1) {
        printf("%s: status should be -1\n", s);
        exit_nomsg(1);
@@ -865,13 +865,13 @@ preempt(char *s)
   kill(pid1);
   kill(pid2);
   kill(pid3);
-  printf("wait... ");
-  wait(0);
-  wait(0);
-  wait(0);
+  printf("wait_nomsg... ");
+  wait_nomsg(0);
+  wait_nomsg(0);
+  wait_nomsg(0);
 }
 
-// try to find any races between exit_nomsg and wait
+// try to find any races between exit_nomsg and wait_nomsg
 void
 exitwait(char *s)
 {
@@ -885,12 +885,12 @@ exitwait(char *s)
     }
     if(pid){
       int xstate;
-      if(wait(&xstate) != pid){
-        printf("%s: wait wrong pid\n", s);
+      if(wait_nomsg(&xstate) != pid){
+        printf("%s: wait_nomsg wrong pid\n", s);
         exit_nomsg(1);
       }
       if(i != xstate) {
-        printf("%s: wait wrong exit_nomsg status\n", s);
+        printf("%s: wait_nomsg wrong exit_nomsg status\n", s);
         exit_nomsg(1);
       }
     } else {
@@ -913,8 +913,8 @@ reparent(char *s)
       exit_nomsg(1);
     }
     if(pid){
-      if(wait(0) != pid){
-        printf("%s: wait wrong pid\n", s);
+      if(wait_nomsg(0) != pid){
+        printf("%s: wait_nomsg wrong pid\n", s);
         exit_nomsg(1);
       }
     } else {
@@ -950,8 +950,8 @@ twochildren(char *s)
       if(pid2 == 0){
         exit_nomsg(0);
       } else {
-        wait(0);
-        wait(0);
+        wait_nomsg(0);
+        wait_nomsg(0);
       }
     }
   }
@@ -978,7 +978,7 @@ forkfork(char *s)
         if(pid1 == 0){
           exit_nomsg(0);
         }
-        wait(0);
+        wait_nomsg(0);
       }
       exit_nomsg(0);
     }
@@ -986,7 +986,7 @@ forkfork(char *s)
 
   int xstatus;
   for(int i = 0; i < N; i++){
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != 0) {
       printf("%s: fork in child failed", s);
       exit_nomsg(1);
@@ -1020,13 +1020,13 @@ forkforkfork(char *s)
 
   sleep(20); // two seconds
   close(open("stopforking", O_CREATE|O_RDWR));
-  wait(0);
+  wait_nomsg(0);
   sleep(10); // one second
 }
 
 // regression test. does reparent() violate the parent-then-child
 // locking order when giving away a child to init, so that exit_nomsg()
-// deadlocks against init's wait()? also used to trigger a "panic:
+// deadlocks against init's wait_nomsg()? also used to trigger a "panic:
 // release" due to exit_nomsg() releasing a different p->parent->lock than
 // it acquired.
 void
@@ -1043,7 +1043,7 @@ reparent2(char *s)
       fork();
       exit_nomsg(0);
     }
-    wait(0);
+    wait_nomsg(0);
   }
 
   exit_nomsg(0);
@@ -1076,7 +1076,7 @@ mem(char *s)
     exit_nomsg(0);
   } else {
     int xstatus;
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus == -1){
       // probably page fault, so might be lazy lab,
       // so OK.
@@ -1115,7 +1115,7 @@ sharedfd(char *s)
     exit_nomsg(0);
   } else {
     int xstatus;
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != 0)
       exit_nomsg(xstatus);
   }
@@ -1185,7 +1185,7 @@ fourfiles(char *s)
 
   int xstatus;
   for(pi = 0; pi < NCHILD; pi++){
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != 0)
       exit_nomsg(xstatus);
   }
@@ -1252,7 +1252,7 @@ createdelete(char *s)
 
   int xstatus;
   for(pi = 0; pi < NCHILD; pi++){
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != 0)
       exit_nomsg(1);
   }
@@ -1423,7 +1423,7 @@ concreate(char *s)
       exit_nomsg(0);
     } else {
       int xstatus;
-      wait(&xstatus);
+      wait_nomsg(&xstatus);
       if(xstatus != 0)
         exit_nomsg(1);
     }
@@ -1482,7 +1482,7 @@ concreate(char *s)
     if(pid == 0)
       exit_nomsg(0);
     else
-      wait(0);
+      wait_nomsg(0);
   }
 }
 
@@ -1513,7 +1513,7 @@ linkunlink(char *s)
   }
 
   if(pid)
-    wait(0);
+    wait_nomsg(0);
   else
     exit_nomsg(0);
 }
@@ -1981,14 +1981,14 @@ forktest(char *s)
   }
 
   for(; n > 0; n--){
-    if(wait(0) < 0){
-      printf("%s: wait stopped early\n", s);
+    if(wait_nomsg(0) < 0){
+      printf("%s: wait_nomsg stopped early\n", s);
       exit_nomsg(1);
     }
   }
 
-  if(wait(0) != -1){
-    printf("%s: wait got too many\n", s);
+  if(wait_nomsg(0) != -1){
+    printf("%s: wait_nomsg got too many\n", s);
     exit_nomsg(1);
   }
 }
@@ -2023,7 +2023,7 @@ sbrkbasic(char *s)
     exit_nomsg(1);
   }
 
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   if(xstatus == 1){
     printf("%s: too much memory allocated!\n", s);
     exit_nomsg(1);
@@ -2053,7 +2053,7 @@ sbrkbasic(char *s)
   }
   if(pid == 0)
     exit_nomsg(0);
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   exit_nomsg(xstatus);
 }
 
@@ -2135,7 +2135,7 @@ kernmem(char *s)
       exit_nomsg(1);
     }
     int xstatus;
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != -1)  // did kernel kill child?
       exit_nomsg(1);
   }
@@ -2159,7 +2159,7 @@ MAXVAplus(char *s)
       exit_nomsg(1);
     }
     int xstatus;
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != -1)  // did kernel kill child?
       exit_nomsg(1);
   }
@@ -2201,7 +2201,7 @@ sbrkfail(char *s)
     if(pids[i] == -1)
       continue;
     kill(pids[i]);
-    wait(0);
+    wait_nomsg(0);
   }
   if(c == (char*)0xffffffffffffffffL){
     printf("%s: failed sbrk leaked memory\n", s);
@@ -2229,7 +2229,7 @@ sbrkfail(char *s)
     printf("%s: allocate a lot of memory succeeded %d\n", s, n);
     exit_nomsg(1);
   }
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   if(xstatus != -1 && xstatus != 2)
     exit_nomsg(1);
 }
@@ -2319,7 +2319,7 @@ bigargtest(char *s)
     exit_nomsg(1);
   }
   
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   if(xstatus != 0)
     exit_nomsg(xstatus);
   fd = open("bigarg-ok", 0);
@@ -2414,7 +2414,7 @@ stacktest(char *s)
     printf("%s: fork failed\n", s);
     exit_nomsg(1);
   }
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   if(xstatus == -1)  // kernel killed child?
     exit_nomsg(0);
   else
@@ -2437,7 +2437,7 @@ textwrite(char *s)
     printf("%s: fork failed\n", s);
     exit_nomsg(1);
   }
-  wait(&xstatus);
+  wait_nomsg(&xstatus);
   if(xstatus == -1)  // kernel killed child?
     exit_nomsg(0);
   else
@@ -2479,7 +2479,7 @@ sbrkbugs(char *s)
     // user page fault here.
     exit_nomsg(0);
   }
-  wait(0);
+  wait_nomsg(0);
 
   pid = fork();
   if(pid < 0){
@@ -2494,7 +2494,7 @@ sbrkbugs(char *s)
     sbrk(-(sz - 3500));
     exit_nomsg(0);
   }
-  wait(0);
+  wait_nomsg(0);
 
   pid = fork();
   if(pid < 0){
@@ -2512,7 +2512,7 @@ sbrkbugs(char *s)
 
     exit_nomsg(0);
   }
-  wait(0);
+  wait_nomsg(0);
 
   exit_nomsg(0);
 }
@@ -2731,7 +2731,7 @@ manywrites(char *s)
 
   for(int ci = 0; ci < nchildren; ci++){
     int st = 0;
-    wait(&st);
+    wait_nomsg(&st);
     if(st != 0)
       exit_nomsg(st);
   }
@@ -2805,7 +2805,7 @@ execout(char *s)
       exec("echo", args);
       exit_nomsg(0);
     } else {
-      wait((int*)0);
+      wait_nomsg((int*)0);
     }
   }
 
@@ -2955,7 +2955,7 @@ run(void f(char *), char *s) {
     f(s);
     exit_nomsg(0);
   } else {
-    wait(&xstatus);
+    wait_nomsg(&xstatus);
     if(xstatus != 0) 
       printf("FAILED\n");
     else
@@ -3039,7 +3039,7 @@ countfree()
   }
 
   close(fds[0]);
-  wait((int*)0);
+  wait_nomsg((int*)0);
   
   return n;
 }

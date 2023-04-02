@@ -100,7 +100,7 @@ void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
-int             wait(uint64);
+int             wait(uint64, uint64);
 void            wakeup(void*);
 void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
@@ -187,3 +187,4 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+#define wait_nomsg(x) wait(x, 0)

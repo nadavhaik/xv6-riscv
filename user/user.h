@@ -2,8 +2,8 @@ struct stat;
 
 // system calls
 int fork(void);
-int exit(int, char*) __attribute__((noreturn));
-int wait(int*);
+int exit(int, const char*) __attribute__((noreturn));
+int wait(int*, char*);
 int pipe(int*);
 int write(int, const void*, int);
 int read(int, void*, int);
@@ -42,3 +42,4 @@ int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
 
 #define exit_nomsg(code) exit(code, "")
+#define wait_nomsg(x) wait(x, 0)
