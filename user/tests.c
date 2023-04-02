@@ -36,6 +36,10 @@ void runt(Test test)
         {
             sleep(1);
         }
+        if(*child_done == 0)
+        {
+            fprintf(stderr, "Test %s failed or timed out!\n", test.name);
+        }
     }
 }
 
