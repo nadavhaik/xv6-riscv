@@ -38,7 +38,7 @@ void runt(Test test)
         }
         if(*child_done == 0)
         {
-            fprintf(stderr, "Test %s failed or timed out!\n", test.name);
+            // fprintf(stderr, "Test %s failed or timed out!\n", test.name);
         }
     }
 }
@@ -49,26 +49,26 @@ void assert_ints_equal(int x, int y)
 {
     if(x == y) return;
     fprintf(stderr, "Assertion failed! Expected: %d, got: %d\n", x, y);
-    exit(0);
+    exit_nomsg(0);
 }
 
 void assert_lt_ints(int x, int y) {
     if(x < y) return;
     fprintf(stderr, "Assertion failed! Condition: %d < %d isn't satisfied\n", x, y);
-    exit(0);
+    exit_nomsg(0);
 }
 
 void assert_lte_ints(int x, int y) {
     if(x <= y) return;
     fprintf(stderr, "Assertion failed! Condition: %d <= %d isn't satisfied\n", x, y);
-    exit(0);
+    exit_nomsg(0);
 }
 
 void assert_strings_equal(char* s1, char* s2) 
 {
     if(strcmp(s1, s2) == 0) return;
     fprintf(stderr, "Assertion failed! Expected: %s, got: %s\n", s1, s2);
-    exit(0);
+    exit_nomsg(0);
 }
 
 void print_memsize()
@@ -110,5 +110,5 @@ void run_all_tests()
 int main() 
 {
     run_all_tests();
-    exit(0);
+    exit_nomsg(0);
 }

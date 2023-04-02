@@ -10,8 +10,13 @@ uint64
 sys_exit(void)
 {
   int n;
+  char msg[MAXMSG];
   argint(0, &n);
-  exit(n);
+  if(argstr(0, msg, MAXMSG) < 0) 
+  {
+    return -1;
+  }
+  exit(n, msg);
   return 0;  // not reached
 }
 

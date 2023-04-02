@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -340,16 +342,18 @@ reparent(struct proc *p)
   }
 }
 
-// Exit the current process.  Does not return.
-// An exited process remains in the zombie state
+// exit the current process.  Does not return.
+// An exit process remains in the zombie state
 // until its parent calls wait().
+
 void
-exit(int status)
+exit(int status, char* exit_msg)
 {
   struct proc *p = myproc();
 
+
   if(p == initproc)
-    panic("init exiting");
+    panic("init exit");
 
   // Close all open files.
   for(int fd = 0; fd < NOFILE; fd++){
@@ -372,60 +376,20 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
+
+  acquire(&p->lock);
+
+  p->xstate = status;
+  p->state = ZOMBIE;
+  strncpy(p->exit_msg, exit_msg, MAXMSG); // copy the exit message - task 3.2
   
-  acquire(&p->lock);
-
-  p->xstate = status;
-  p->state = ZOMBIE;
-
   release(&wait_lock);
 
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
 }
-void
-exitnew(int status, char* exit_msg)
-{
-  struct proc *p = myproc();
 
-  if(p == initproc)
-    panic("init exiting");
-
-  // Close all open files.
-  for(int fd = 0; fd < NOFILE; fd++){
-    if(p->ofile[fd]){
-      struct file *f = p->ofile[fd];
-      fileclose(f);
-      p->ofile[fd] = 0;
-    }
-  }
-
-  begin_op();
-  iput(p->cwd);
-  end_op();
-  p->cwd = 0;
-
-  acquire(&wait_lock);
-
-  // Give any children to init.
-  reparent(p);
-
-  // Parent might be sleeping in wait().
-  wakeup(p->parent);
-
-  acquire(&p->lock);
-
-  p->xstate = status;
-  p->state = ZOMBIE;
-  argstr(0, p->exit_msg, sizeof(p->exit_msg)); // copy the exit message - task 3.2
-
-  release(&wait_lock);
-
-  // Jump into the scheduler, never to return.
-  sched();
-  panic("zombie exit");
-}
 
 
 
@@ -442,7 +406,7 @@ wait(uint64 addr)
   acquire(&wait_lock);
 
   for(;;){
-    // Scan through table looking for exited children.
+    // Scan through table looking for exit children.
     havekids = 0;
     for(pp = proc; pp < &proc[NPROC]; pp++){
       if(pp->parent == p){

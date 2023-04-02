@@ -14,7 +14,7 @@ int main() {
   char *buffer = malloc(20 * KB); // task 2.5.2
   if (!buffer) {
     printf("Memory allocation failed.\n");
-    exit(0);
+    exit_nomsg(0);
   }
 
   mem_after = memsize();
@@ -25,6 +25,6 @@ int main() {
   mem_after = memsize();
   printf("Memory usage after deallocation: %d bytes\n", mem_after); // task 2.5.5
 
-  exit(0);
+  exit_nomsg(0);
 }
 
