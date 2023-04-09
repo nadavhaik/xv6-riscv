@@ -1,6 +1,6 @@
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
+#include "../kernel/types.h"
+#include "../kernel/stat.h"
+#include "user.h"
 
 //(*syscalls[])(void)(
 //static uint64 (*syscalls[])(void) = {
@@ -63,6 +63,11 @@ void assert_lte_ints(int x, int y) {
     fprintf(stderr, "Assertion failed! Condition: %d <= %d isn't satisfied\n", x, y);
     exit_nomsg(0);
 }
+
+// void assert_int_arrs_equal(int* a1, int* a2, int n)
+// {
+//     if(memcmp())
+// }
 
 void assert_strings_equal(char* s1, char* s2) 
 {

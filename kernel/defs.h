@@ -106,6 +106,7 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+int             set_ps_priority(int);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -185,6 +186,20 @@ void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
+// my_stdlib.c
+void            qsort(void *base, uint64 nitems, uint64 size, int (*compar)(const void *, const void*));
+void            bsort(void *base, uint64 nitems, uint64 size, int (*compar)(const void *, const void*));
+
+
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
 #define wait_nomsg(x) wait(x, 0)
+
+
+//                  INTERRUPT VALUES
+//              meaning           value
+//      ----------------------   -------
+#define UNRECOGNIZED_INTERRUPT      0
+#define OTHER_INTERRUPT             1
+#define TIMER_INTERRUPT             2

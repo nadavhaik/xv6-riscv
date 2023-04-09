@@ -104,3 +104,11 @@ sys_memsize(void)
 {
   return myproc()->sz;
 }
+
+uint64
+sys_set_ps_priority(void)
+{
+  int priority;
+  argint(0, &priority);
+  return set_ps_priority(priority);
+}

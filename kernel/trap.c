@@ -29,14 +29,23 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+
+// handle timer-interrupt effects
+void post_run(struct proc* p) 
+{ 
+  // p->accumulator += p->ps_priority; 
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
 //
+
 void
 usertrap(void)
 {
-  int which_dev = 0;
+
+  int which_dev = UNRECOGNIZED_INTERRUPT;
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
@@ -65,7 +74,7 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  } else if((which_dev = devintr()) != UNRECOGNIZED_INTERRUPT){
     // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
@@ -77,8 +86,11 @@ usertrap(void)
     exit_nomsg(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == TIMER_INTERRUPT) {
+    post_run(p);
     yield();
+  }
+
 
   usertrapret();
 }
@@ -134,7 +146,7 @@ usertrapret(void)
 void 
 kerneltrap()
 {
-  int which_dev = 0;
+  int which_dev = UNRECOGNIZED_INTERRUPT;
   uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
@@ -144,15 +156,18 @@ kerneltrap()
   if(intr_get() != 0)
     panic("kerneltrap: interrupts enabled");
 
-  if((which_dev = devintr()) == 0){
+  if((which_dev = devintr()) == UNRECOGNIZED_INTERRUPT){
     printf("scause %p\n", scause);
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");
   }
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
-    yield();
+  if(which_dev == TIMER_INTERRUPT && myproc() != 0 && myproc()->state == RUNNING){
+      post_run(myproc());
+      yield();
+  }
+    
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
@@ -200,7 +215,7 @@ devintr()
     if(irq)
       plic_complete(irq);
 
-    return 1;
+    return OTHER_INTERRUPT;
   } else if(scause == 0x8000000000000001L){
     // software interrupt from a machine-mode timer interrupt,
     // forwarded by timervec in kernelvec.S.
@@ -213,9 +228,9 @@ devintr()
     // the SSIP bit in sip.
     w_sip(r_sip() & ~2);
 
-    return 2;
+    return TIMER_INTERRUPT;
   } else {
-    return 0;
+    return UNRECOGNIZED_INTERRUPT;
   }
 }
 
