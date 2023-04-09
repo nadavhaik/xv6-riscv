@@ -81,6 +81,7 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+#define DEFAULT_PRIORITY 5
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -105,6 +106,8 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   char exit_msg[MAXMSG];       // Exit message
+  short ps_priority;           // Priority
+  long long accumulator;       // Accumulator
 };
 
 #define exit_nomsg(code) exit(code, "")
