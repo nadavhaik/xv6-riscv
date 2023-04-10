@@ -875,7 +875,10 @@ int get_cfs_stats(int pid, uint64 addr)
     {
       cfs_stats res = {p->cfs_priority, p->run_time, p->sleep_time, p->runnable_time};
       release(&p->lock);
-      copyout(myproc()->pagetable, addr, (char*)&res, sizeof(cfs_stats));
+      if(copyout(myproc()->pagetable, addr, (char*)&res, sizeof(res)) < 0) 
+      {
+        return -1;
+      }
       return 0;
     }
     release(&p->lock);

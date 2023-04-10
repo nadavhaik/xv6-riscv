@@ -127,7 +127,7 @@ sys_get_cfs_stats(void)
   int pid;
   uint64 stats_address;
   argint(0, &pid);
-  argaddr(0, &stats_address);
+  argaddr(1, &stats_address);
   return get_cfs_stats(pid, stats_address);
 }
 
