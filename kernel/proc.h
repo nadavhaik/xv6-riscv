@@ -132,13 +132,7 @@ struct proc
   int runnable_time;
 };
 
-typedef struct cfs_stats
-{
-  int cfs_priority;           
-  int run_time;
-  int sleep_time;
-  int runnable_time;
-} cfs_stats;
+
 
 #define ROUND_ROBIN_POLICY 0
 #define PS_POLICY 1

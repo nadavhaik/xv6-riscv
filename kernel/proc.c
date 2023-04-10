@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "cfs_stats.h"
 
 
 struct cpu cpus[NCPU];
