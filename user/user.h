@@ -1,4 +1,6 @@
 struct stat;
+struct cfs_stats;
+typedef struct cfs_stats cfs_stats;
 
 // system calls
 int fork(void);
@@ -25,7 +27,7 @@ int uptime(void);
 int memsize(void);
 int set_ps_priority(int);
 int set_cfs_priority(int);
-int get_cfs_stats(int, uint64);
+int get_cfs_stats(int, cfs_stats*);
 int set_policy(int);
 
 // ulib.c
