@@ -129,7 +129,11 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->accumulator = 0;
-  p->ps_priority = DEFAULT_PRIORITY;
+  p->ps_priority = DEFAULT_PS_PRIORITY;
+  p->cfs_priority = DEFAULT_CFS_PRIORITY;
+  p->run_time = 0;
+  p->sleep_time = 0;
+  p->runnable_time = 0;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -458,6 +462,42 @@ int wait(uint64 addr, uint64 msg_out)
   }
 }
 
+int decay_factor(const struct proc* p)
+{
+  switch (p->cfs_priority)
+  {
+  case 0:
+    return HIGH_PRIORITY_DECAY_FACTOR;
+  case 1:
+    return NORMAL_PRIORITY_DECAY_FACTOR;
+  case 2:
+    return LOW_PRIORITY_DECAY_FACTOR;
+  default:
+    return -1;
+  }
+}
+
+int vruntime(const struct proc* p)
+{
+  if(p->run_time == 0 && p->sleep_time == 0 && p->runnable_time == 0)
+    return 0;
+  return decay_factor(p) * p->run_time /
+    (p->run_time + p->sleep_time + p->runnable_time); 
+}
+
+int compare_procs_by_vruntime(const void* p1, const void* p2)
+{
+ return vruntime((*(struct proc**)p1)) - vruntime((*(struct proc**)p2));
+}
+
+void sort_by_vruntime(struct proc* in, struct proc** out, int arr_size)
+{
+  for(int i=0; i<arr_size; i++)
+    out[i] = &in[i];
+  bsort(out, arr_size, sizeof(struct proc*), compare_procs_by_vruntime);
+}
+
+
 int compare_procs_by_accumulator(const void* p1, const void* p2)
 {
   return (*(struct proc**)p1)->accumulator - (*(struct proc**)p2)->accumulator;
@@ -470,27 +510,34 @@ void sort_by_accumulator(struct proc* in, struct proc** out, int arr_size)
   bsort(out, arr_size, sizeof(struct proc*), compare_procs_by_accumulator);
 }
 
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run.
-//  - swtch to start running that process.
-//  - eventually that process transfers control
-//    via swtch back to the scheduler.
-void scheduler(void)
+
+void round_robin_scheduler(struct cpu* c)
+{
+  struct proc* p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+}
+
+void priority_scheduler(struct cpu* c)
 {
   struct proc **p;
-  struct cpu *c = mycpu();
-
-  c->proc = 0;
-  for(;;){
-    struct proc* sorted[NPROC];
-    sort_by_accumulator(proc, sorted, NPROC);
-    
-    // Avoid deadlock by ensuring that devices can interrupt.
-    intr_on();
-
-    for(p = sorted; p < &sorted[NPROC]; p++) {
+  struct proc* sorted[NPROC];
+  sort_by_accumulator(proc, sorted, NPROC);
+  for(p = sorted; p < &sorted[NPROC]; p++) {
       acquire(&(*p)->lock);
       if((*p)->state == RUNNABLE) {
         // Switch to chosen process.  It is the process's job
@@ -508,6 +555,86 @@ void scheduler(void)
       }
       release(&(*p)->lock);
     }
+}
+
+void cf_scheduler(struct cpu* c)
+{
+  struct proc **p;
+  struct proc* sorted[NPROC];
+  sort_by_vruntime(proc, sorted, NPROC);
+  for(p = sorted; p < &sorted[NPROC]; p++) {
+      acquire(&(*p)->lock);
+      if((*p)->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        (*p)->state = RUNNING;
+        c->proc = *p;
+        swtch(&c->context, &(*p)->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        release(&(*p)->lock);
+        break;
+      }
+      release(&(*p)->lock);
+    }
+}
+
+int scheduler_policy = ROUND_ROBIN_POLICY;
+
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itself up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run.
+//  - swtch to start running that process.
+//  - eventually that process transfers control
+//    via swtch back to the scheduler.
+void scheduler(void)
+{
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    switch (scheduler_policy)
+    {
+    case ROUND_ROBIN_POLICY:
+      round_robin_scheduler(c);
+      break;
+    case PS_POLICY:
+      priority_scheduler(c);
+      break;
+    case CFS_POLICY:
+      cf_scheduler(c);
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+void handle_tick()
+{
+  struct proc* p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      switch (p->state)
+      {
+      case RUNNING:
+        p->run_time++;
+        break;
+      case RUNNABLE:
+        p->runnable_time++;
+        break;
+      case SLEEPING:
+        p->sleep_time++;
+        break;
+      default:
+        break;
+      }
+      release(&p->lock);
   }
 }
 
