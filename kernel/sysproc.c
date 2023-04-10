@@ -112,3 +112,29 @@ sys_set_ps_priority(void)
   argint(0, &priority);
   return set_ps_priority(priority);
 }
+
+uint64
+sys_set_cfs_priority(void)
+{
+  int priority;
+  argint(0, &priority);
+  return set_cfs_priority(priority);
+}
+
+uint64
+sys_get_cfs_stats(void)
+{
+  int pid;
+  uint64 stats_address;
+  argint(0, &pid);
+  argaddr(0, &stats_address);
+  return get_cfs_stats(pid, stats_address);
+}
+
+uint64
+sys_set_policy(void)
+{
+  int policy;
+  argint(0, &policy);
+  return set_policy(policy);
+}

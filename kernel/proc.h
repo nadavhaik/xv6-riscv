@@ -127,10 +127,18 @@ struct proc
   short ps_priority;           // Priority for the PS algorithm
   long long accumulator;       // Accumulator
   int cfs_priority;            // Priority for the CFS algorithm
-  uint64 run_time;
-  uint64 sleep_time;
-  uint64 runnable_time;
+  int run_time;
+  int sleep_time;
+  int runnable_time;
 };
+
+typedef struct cfs_stats
+{
+  int cfs_priority;           
+  int run_time;
+  int sleep_time;
+  int runnable_time;
+} cfs_stats;
 
 #define ROUND_ROBIN_POLICY 0
 #define PS_POLICY 1

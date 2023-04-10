@@ -857,3 +857,37 @@ int set_ps_priority(int priority)
   myproc()->ps_priority = priority;
   return 0;
 }
+
+int set_cfs_priority(int priority)
+{
+  if(priority < 0 || priority > 2) return -1;
+  myproc()->cfs_priority = priority;
+  return 0;
+}
+
+int get_cfs_stats(int pid, uint64 addr)
+{
+  for (struct proc *p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if(p->pid == pid)
+    {
+      cfs_stats res = {p->cfs_priority, p->run_time, p->sleep_time, p->runnable_time};
+      release(&p->lock);
+      copyout(myproc()->pagetable, addr, (char*)&res, sizeof(cfs_stats));
+      return 0;
+    }
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+int set_policy(int policy)
+{
+  if(policy != ROUND_ROBIN_POLICY && policy != PS_POLICY && policy != CFS_POLICY)
+    return -1;
+  
+  scheduler_policy = policy;
+  return 0;
+}
