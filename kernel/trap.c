@@ -33,7 +33,7 @@ trapinithart(void)
 // handle timer-interrupt effects
 void post_run(struct proc* p) 
 { 
-  // p->accumulator += p->ps_priority; 
+  p->accumulator += p->ps_priority; 
 }
 
 //
