@@ -138,6 +138,7 @@ UPROGS=\
 	$U/_tests\
 	$U/_goodbye\
 	$U/_cfs\
+	$U/_policy\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
