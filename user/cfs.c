@@ -5,8 +5,36 @@
 
 
 
+#define HIGH_PRIORITY_DECAY_FACTOR 75
+#define NORMAL_PRIORITY_DECAY_FACTOR 100
+#define LOW_PRIORITY_DECAY_FACTOR 125
+
+int decay_factor(const cfs_stats* p)
+{
+  switch (p->cfs_priority)
+  {
+  case 0:
+    return HIGH_PRIORITY_DECAY_FACTOR;
+  case 1:
+    return NORMAL_PRIORITY_DECAY_FACTOR;
+  case 2:
+    return LOW_PRIORITY_DECAY_FACTOR;
+  default:
+    return -1;
+  }
+}
+
+int vruntime(const cfs_stats* p)
+{
+  if(p->run_time == 0 && p->sleep_time == 0 && p->runnable_time == 0)
+    return 0;
+  return (decay_factor(p) * p->run_time) /
+    (p->run_time + p->sleep_time + p->runnable_time); 
+}
+
 void print_stats(int pid, cfs_stats stats, int out){
-    fprintf(out, "PID: %d, CFS priority: %d, run time: %d, sleep time: %d, runnable time: %d\n", pid, stats.cfs_priority, stats.run_time, stats.sleep_time, stats.runnable_time);
+    fprintf(out, "PID: %d, CFS priority: %d, run time: %d, sleep time: %d, runnable time: %d, vruntime: %d\n",
+        pid, stats.cfs_priority, stats.run_time, stats.sleep_time, stats.runnable_time, vruntime(&stats));
 }
 
 void test_1(int out){
