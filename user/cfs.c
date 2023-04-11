@@ -13,7 +13,7 @@ void test_1(int out){
     for (int i = 0; i < 1000000; i++)
     {
         if(i % 100000 == 0){
-            sleep(20);
+            sleep(10);
         }
     }
     cfs_stats stats;
@@ -36,8 +36,9 @@ void main(int argc, char *argv[]) {
     }
     for(int i = 0; i < NUMBER_OF_CHILDREN; i++){
         if((pid = fork()) == 0) {
-            set_ps_priority(i * 3 + 1);
-            set_cfs_priority(i);
+            int priority_index = i % 3;
+            set_ps_priority(priority_index * 3 + 1);
+            set_cfs_priority(priority_index);
             close(pipes[i][0]);
             test_1(pipes[i][1]);
             exit_nomsg(0);
