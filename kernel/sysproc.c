@@ -40,7 +40,7 @@ sys_wait(void)
   uint64 p;
   uint64 msg_out;
   argaddr(0, &p);
-  argaddr(0, &msg_out);
+  argaddr(1, &msg_out);
   return wait(p, msg_out);
 }
 

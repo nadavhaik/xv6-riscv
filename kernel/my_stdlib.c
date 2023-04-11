@@ -1,5 +1,6 @@
 #include "types.h"
 
+
 void swap(void* a, void* b, uint64 size)
 {
     char* _a = (char*) a;
@@ -17,6 +18,8 @@ void* __arr_at(void* array, uint64 i, uint64 size)
 {
     return (void*) (((char*) array) + size * i);
 }
+
+
 
 
 void bsort(void *base, uint64 nitems, uint64 size, int (*compar)(const void *, const void*)) 

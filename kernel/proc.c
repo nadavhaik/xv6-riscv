@@ -434,9 +434,11 @@ int wait(uint64 addr, uint64 msg_out)
 
           // printf("%d\n", pp->xstate);
           // printf("%s\n", pp->exit_msg);
-          if (addr != 0 &&
-              (copyout(p->pagetable, msg_out, pp->exit_msg - 8, strlen(pp->exit_msg) + 8) < 0 ||
-               copyout(p->pagetable, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0))
+          int copy_msg_failed = msg_out != 0 &&
+              (copyout(p->pagetable, msg_out, pp->exit_msg, strlen(pp->exit_msg) + 1) < 0);
+          int copy_status_failed = addr != 0 &&
+                copyout(p->pagetable, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0;
+          if (copy_status_failed || copy_msg_failed)
           {
             release(&pp->lock);
             release(&wait_lock);
@@ -482,7 +484,7 @@ int vruntime(const struct proc* p)
 {
   if(p->run_time == 0 && p->sleep_time == 0 && p->runnable_time == 0)
     return 0;
-  return decay_factor(p) * p->run_time /
+  return (decay_factor(p) * p->run_time) /
     (p->run_time + p->sleep_time + p->runnable_time); 
 }
 
