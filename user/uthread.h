@@ -39,6 +39,8 @@ struct uthread {
 extern void uswtch(struct context*, struct context*);
 
 int uthread_create(void (*start_func)(), enum sched_priority priority);
+// sizeof enum sched_priority is 4
+// sizeof void* is 8
 
 void uthread_yield();
 void uthread_exit();
