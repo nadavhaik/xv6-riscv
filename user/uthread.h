@@ -1,4 +1,5 @@
 #include "kernel/types.h"
+#include "kernel/extra_types.h"
 
 #define STACK_SIZE  4000
 #define MAX_UTHREADS  4
@@ -36,6 +37,13 @@ struct uthread {
     enum sched_priority priority;       // scheduling priority
 };
 
+typedef struct uthreads_list
+{
+    struct uthreads_list* next;
+    struct uthread* data;
+    
+} uthreads_list;
+
 extern void uswtch(struct context*, struct context*);
 
 int uthread_create(void (*start_func)(), enum sched_priority priority);
@@ -50,3 +58,6 @@ enum sched_priority uthread_set_priority(enum sched_priority priority);
 enum sched_priority uthread_get_priority();
 
 struct uthread* uthread_self();
+
+
+
