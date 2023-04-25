@@ -4,6 +4,12 @@
 static int uthreads_initialized = 0;
 static struct uthread uthreads[MAX_UTHREADS];
 
+void uthread_exit() 
+{
+    printf("ERROR: uthread_exit is NOT IMPLEMENTED!\n");
+    exit(-1);
+}
+
 void initialize_uthreads()
 {
     for(struct uthread* t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
