@@ -122,7 +122,7 @@ void uthread_yield()
     {
         struct uthread* t = *tpp;
         struct uthread* current = uthread_self();
-        current->state = RUNNABLE;
+        if(current != NULL) current->state = RUNNABLE;
         t->state = RUNNING;
         set_current_thread(t);
         uswtch(&current->context, &t->context);
