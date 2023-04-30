@@ -72,8 +72,7 @@ int uthread_create(void (*start_func)(), enum sched_priority priority)
         char* sp = &t->ustack[STACK_SIZE];
         memcpy(sp - ADDRESS_SIZE, (void*)uthread_exit, ADDRESS_SIZE);
         // sp -= ADDRESS_SIZE;
-
-        // memcpy(sp - ADDRESS_SIZE, (void*)start_func, ADDRESS_SIZE);
+        // memcpy(sp, (void*)start_func, ADDRESS_SIZE);
         // sp -= ADDRESS_SIZE;
 
         // memcpy(sp, (void*) &uthread_exit, ADDRESS_SIZE);
@@ -131,22 +130,11 @@ uthread_dynamic_array find_prioritized_uthreads()
     return res;
 }
 
-#define uthread_sched2(_t) \
-{ \
-     printf("called uthread_sched\n"); \
-     struct uthread* t = _t; \
-     struct uthread* current = uthread_self(); \
-    struct uthread garbage_thread; \
-    if(current == NULL) current = &garbage_thread; \
-    current->state = RUNNABLE;  \
-    t->state = RUNNING; \
-    set_current_thread(t); \
-    uswtch(&current->context, &t->context); \
-}
+
 
 void uthread_sched(struct uthread* t)
 {
-    // printf("called uthread_sched\n");
+    // printf("called uthread_sched for thread in address %lx\n", (uint64)t);
     struct uthread* current = uthread_self();
 
 
@@ -164,54 +152,58 @@ void uthread_sched(struct uthread* t)
         current_context = &new_context;
     } else
     {
-        // current->state = RUNNABLE;
+        current->state = RUNNABLE;
         current_context = &current->context;
     }
         
     t->state = RUNNING;
     
+    
     set_current_thread(t);
-    uswtch(current_context, &t->context);
+    uswtch(current_context, &t->context);    
+
+    // struct uthread* prev = current;
+    // prev->context = *current_context;
+    // // prev->state = RUNNABLE;
+    // set_current_thread(prev);
 }
 
 void uthread_scheduler()
 {
     // printf("called uthread_scheduler\n");
-    for(;;)
+    // for(;;)
     {
         uthread_dynamic_array prioritized_uthreads = find_prioritized_uthreads();
-        printf("number_of_uthreads=%d\n", prioritized_uthreads.size);
-        if(prioritized_uthreads.size == 0) continue;
-
+        // printf("number_of_uthreads=%d\n", prioritized_uthreads.size);
+        if(prioritized_uthreads.size == 0) exit(0);
         struct uthread* current_thread = uthread_self();
-
-        // first run (main thread):
-        if(current_thread == NULL) 
-        {
-            // printf("current_thread == NULL!\n");
-            struct uthread* t0 = prioritized_uthreads.data[0];
-            // printf("calling usched\n");
-            // print_thread(t0);
-            uthread_sched(t0);
-        }
         
-
         // trying to find a pointer for current_thread in highest_priority_uthreads:
         struct uthread** current_tpp = NULL;
-        for(struct uthread** tpp = prioritized_uthreads.data; tpp < &prioritized_uthreads.data[prioritized_uthreads.size]; tpp++)
+        int current_tpp_index = -1;
+        for(struct uthread** tpp = prioritized_uthreads.data;
+         tpp < &prioritized_uthreads.data[prioritized_uthreads.size];
+         tpp++)
         {
+            current_tpp_index++;
             if(*tpp == current_thread) 
             {
+                // printf("current tpp in prioritized_uthreads! address=%lx\n", (uint64)current_thread);
                 current_tpp = tpp;
                 break;
             }
         }
 
         // if current thread is not in highest_priority_uthreads:
-        if(current_tpp == NULL) uthread_sched(prioritized_uthreads.data[0]);
+        if(current_tpp == NULL) 
+        {
+            // printf("current tpp not in prioritized_uthreads! address=%lx\n", (uint64)current_thread);
+            uthread_sched(prioritized_uthreads.data[0]);
+            return;
+        }
         // printf("current_tpp != NULL!\n");
 
-        int current_tpp_index = (current_tpp - prioritized_uthreads.data) / sizeof(struct uthread**);
+        // printf("current_tpp_index=%d\n", current_tpp_index);
         
         uthread_sched(prioritized_uthreads.data[(current_tpp_index + 1) % prioritized_uthreads.size]);
     }
@@ -220,6 +212,7 @@ void uthread_scheduler()
 
 void uthread_yield() 
 {
+    // printf("called uthread_yield\n");
     struct uthread* current = uthread_self();
     if(current != NULL) current->state = RUNNABLE;
     uthread_scheduler();
@@ -241,16 +234,24 @@ enum sched_priority uthread_get_priority(){ return uthread_self()->priority; }
 int uthread_start_all() 
 { 
     if(uthread_self() != NULL) return -1;
+    uthread_dynamic_array prioritized_uthreads = find_prioritized_uthreads();
 
-    uthread_scheduler();
+    for(;;)
+    {
+        for(struct uthread** tpp = prioritized_uthreads.data; tpp < &prioritized_uthreads.data[prioritized_uthreads.size]; tpp++)
+        {
+            uthread_sched(*tpp);
+        }
+    }
+
     return 0;
 }
 
 void uthread_exit() 
 {
+    printf("called uthread_exit\n");
     struct uthread* curr_t = uthread_self();
 
-    if(curr_t == NULL) exit(0);
     curr_t->state = FREE;
 
     uthread_scheduler();
