@@ -56,16 +56,6 @@ void initialize_uthreads_table()
     uthreads_table_initialized = true;
 }
 
-void uthread_push(char** spp, void* content)
-{
-    // printf("called uthread_push\n");
-    memcpy(*spp, content, ADDRESS_SIZE);
-    *spp += ADDRESS_SIZE;
-}
-void uthread_pop_many(char** spp, int times) {*spp -= ADDRESS_SIZE * times;}
-void uthread_pop(char** spp) {uthread_pop_many(spp, 1);}
-void* uthread_peek(char** spp) {return *spp;}
-
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
     printf("called uthread_create\n");
@@ -165,23 +155,23 @@ void uthread_sched(struct uthread* t)
     // context won't be backed up and will be stored temporarly as garbage
     // to avoid segfaults.
 
-    struct context current_context;
+    struct context* current_context;
+    struct context new_context;
     
     if(current == NULL) 
     {
-        memset(&current_context, 0, sizeof(current_context));
+        memset(&new_context, 0, sizeof(new_context));
+        current_context = &new_context;
     } else
     {
-        current->state = RUNNABLE;
-        current_context = current->context;
+        // current->state = RUNNABLE;
+        current_context = &current->context;
     }
         
     t->state = RUNNING;
     
     set_current_thread(t);
-
-
-    uswtch(&current_context, &t->context);
+    uswtch(current_context, &t->context);
 }
 
 void uthread_scheduler()
@@ -190,7 +180,7 @@ void uthread_scheduler()
     for(;;)
     {
         uthread_dynamic_array prioritized_uthreads = find_prioritized_uthreads();
-        // printf("number_of_uthreads=%d\n", prioritized_uthreads.size);
+        printf("number_of_uthreads=%d\n", prioritized_uthreads.size);
         if(prioritized_uthreads.size == 0) continue;
 
         struct uthread* current_thread = uthread_self();
@@ -230,8 +220,6 @@ void uthread_scheduler()
 
 void uthread_yield() 
 {
-    struct context current_ctx;
-    
     struct uthread* current = uthread_self();
     if(current != NULL) current->state = RUNNABLE;
     uthread_scheduler();
