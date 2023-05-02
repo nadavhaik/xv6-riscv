@@ -114,7 +114,9 @@ void                kthreadinit(struct proc *);
 struct kthread*     mykthread();
 void                kforkret();
 int                 alloctid(struct proc*);
-struct kthread*     allockt(struct proc* proc);
+struct kthread*     allockt(struct proc*);
+int                 ktkilled(struct kthread*);
+
 
 
 // swtch.S

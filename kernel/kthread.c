@@ -118,3 +118,11 @@ found:
   // TODO: delte this after you are done with task 2.2
   return kt;
 }
+
+int ktkilled(struct kthread* kt)
+{
+  acquire(&kt->lock);
+  int killed = kt->killed;
+  release(&kt->lock);
+  return killed;
+}
