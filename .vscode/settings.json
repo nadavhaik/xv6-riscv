@@ -5,6 +5,7 @@
         "defs.h": "c",
         "extra_types.h": "c",
         "user.h": "c",
-        "uthread.h": "c"
+        "uthread.h": "c",
+        "kthread.h": "c"
     },
 }
