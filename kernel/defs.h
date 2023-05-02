@@ -1,4 +1,3 @@
-#include "kernel/types.h"
 
 struct buf;
 struct context;
@@ -10,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct kthread;
 
 // bio.c
 void            binit(void);
@@ -112,9 +112,10 @@ void            procdump(void);
 // kthread.c
 void                kthreadinit(struct proc *);
 struct kthread*     mykthread();
+void                kforkret();
+int                 alloctid(struct proc*);
+struct kthread*     allockt(struct proc* proc);
 
-// TODO: delte this after you are done with task 2.2
-void allocproc_help_function(struct proc *p);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

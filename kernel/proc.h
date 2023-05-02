@@ -3,15 +3,8 @@
 #include "kernel/proc_and_kthreads.h"
 
 
-// Per-CPU state.
-struct cpu {
-  struct proc *proc;          // The process running on this cpu, or null.
-  struct context context;     // swtch() here to enter scheduler().
-  int noff;                   // Depth of push_off() nesting.
-  int intena;                 // Were interrupts enabled before push_off()?
-};
 
-extern struct cpu cpus[NCPU];
+enum procstate {PROC_UNUSED, PROC_USED, PROC_ZOMBIE};
 
 
 // Per-process state
@@ -28,14 +21,15 @@ struct proc {
   struct kthread kthread[NKT];        // kthread group table
   struct trapframe *base_trapframes;  // data page for trampolines
 
+  struct spinlock tlock;
+  int next_tid;
+
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
 
   // these are private to the process, so p->lock need not be held.
-  uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
-  struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)

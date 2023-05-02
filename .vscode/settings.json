@@ -6,6 +6,8 @@
         "extra_types.h": "c",
         "user.h": "c",
         "uthread.h": "c",
-        "kthread.h": "c"
+        "kthread.h": "c",
+        "proc_and_kthreads.h": "c",
+        "kernel": "c"
     },
 }
