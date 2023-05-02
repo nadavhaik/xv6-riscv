@@ -1,3 +1,5 @@
+#include "kernel/spinlock.h"
+#include "kernel/proc_and_kthreads.h"
 
 // per-process data for the trap handling code in trampoline.S.
 // sits in a page by itself just under the trampoline page in the
@@ -52,8 +54,14 @@ struct trapframe {
 
 struct kthread
 {
-
   uint64 kstack;                // Virtual address of kernel stack
-
   struct trapframe *trapframe;  // data page for trampoline.S
+  struct spinlock lock;
+  enum procstate state;
+  void *chan;
+  int killed;
+  int xstate;
+  int tid;
+  struct proc* parentProc;
+  struct context ctx;
 };
