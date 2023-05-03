@@ -7,6 +7,14 @@
 #include "proc.h"
 #include "defs.h"
 
+#define debug_acquire(lock) \
+  printf("acquiring lock for %s\n", (lock)->name);  \
+  acquire((lock));
+
+#define debug_release(lock) \
+  printf("releasing lock for %s\n", (lock)->name);  \
+  release((lock));
+
 
 struct proc proc[NPROC];
 
@@ -50,6 +58,7 @@ proc_mapstacks(pagetable_t kpgtbl)
 void
 procinit(void)
 {
+  printf("procinit called!\n"); 
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
@@ -59,6 +68,8 @@ procinit(void)
       p->state = PROC_UNUSED;
       kthreadinit(p);
   }
+  printf("procinit ended!\n"); 
+
 }
 
 // Must be called with interrupts disabled,
@@ -119,16 +130,17 @@ allocproc(void)
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++) {
-    acquire(&p->lock);
+    debug_acquire(&p->lock);
     if(p->state == PROC_UNUSED) {
       goto found;
     } else {
-      release(&p->lock);
+      debug_release(&p->lock);
     }
   }
   return 0;
 
 found:
+  printf("found! in address %p\n", p);
   p->pid = allocpid();
   p->state = PROC_USED;
   p->next_tid = 1;
@@ -150,11 +162,9 @@ found:
     return 0;
   }
 
-
   allockt(p);
 
 
-  // TODO: delte this after you are done with task 2.2
   return p;
 }
 
@@ -164,6 +174,7 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  printf("freeproc called!\n");
   if(p->base_trapframes)
     kfree((void*)p->base_trapframes);
   p->base_trapframes = 0;
@@ -261,7 +272,6 @@ userinit(void)
   p->cwd = namei("/");
 
   p->kthread[0].state = RUNNABLE;
-  p->state = RUNNABLE;
 
   release(&p->kthread[0].lock);  
   release(&p->lock);
@@ -292,6 +302,7 @@ growproc(int n)
 int
 fork(void)
 {
+  printf("called fork\n");
   int i, pid;
   struct proc *np;
   struct proc *p = myproc();
@@ -486,6 +497,7 @@ scheduler(void)
   struct proc *p;
   struct kthread *kt;
   struct cpu *c = mycpu();
+  bool all_unused = true;
   
   c->thread = NULL;
   for(;;){
@@ -493,14 +505,21 @@ scheduler(void)
     intr_on();
 
     for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state != PROC_USED) goto RELEASE_P;
+      
+      debug_acquire(&p->lock);
+      if(p->state != PROC_USED) {
+        debug_release(&p->lock);
+        continue;
+      }
+      printf("found an used proc!\n");
+      all_unused = false;
+
       // Switch to chosen process.  It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.
       for(kt = proc->kthread; kt < &proc->kthread[NKT]; kt++)
       {
-        acquire(&kt->lock);
+        debug_acquire(&kt->lock);
         if(kt->state == RUNNABLE) 
         {
           kt->state = RUNNING;
@@ -510,11 +529,11 @@ scheduler(void)
           // It should have changed its kt->state before coming back.
           c->thread = NULL;
         }
-        release(&kt->lock);
+        debug_release(&kt->lock);
       }
-RELEASE_P:
-      release(&p->lock);
     }
+    if(all_unused)
+      panic("all unused!");
   }
 }
 
@@ -562,6 +581,7 @@ void
 forkret(void)
 {
   static int first = 1;
+
 
   // Still holding p->lock from scheduler.
   release(&myproc()->lock);

@@ -14,10 +14,13 @@ struct cpu cpus[NCPU];
 void
 kforkret(void)
 {
+  printf("kforkret called!\n");
   static int first = 1;
 
-  // Still holding p->lock from scheduler.
+  // Still holding kt->lock from scheduler.
   release(&mykthread()->lock);
+  // Still holding p->lock from scheduler.
+  release(&myproc()->lock);
 
   if (first) {
     // File system initialization must be run in the context of a
