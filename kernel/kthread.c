@@ -6,6 +6,14 @@
 #include "proc.h"
 #include "defs.h"
 
+#define debug_acquire(lock) \
+  printf("acquiring lock for %s\n", (lock)->name);  \
+  acquire((lock));
+
+#define debug_release(lock) \
+  printf("releasing lock for %s\n", (lock)->name);  \
+  release((lock));
+
 extern struct proc proc[NPROC];
 struct cpu cpus[NCPU];
 
@@ -17,10 +25,10 @@ kforkret(void)
   printf("kforkret called!\n");
   static int first = 1;
 
+
   // Still holding kt->lock from scheduler.
   release(&mykthread()->lock);
-  // Still holding p->lock from scheduler.
-  release(&myproc()->lock);
+
 
   if (first) {
     // File system initialization must be run in the context of a
@@ -70,8 +78,8 @@ void kthreadinit(struct proc *p)
 struct kthread *mykthread()
 {
   push_off();
-  struct cpu *c = mycpu();
-	struct kthread *kt = c->thread;
+  struct kthread *kt;
+  kt = mycpu()->thread;
   pop_off();
   return kt;
 }

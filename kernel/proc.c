@@ -58,18 +58,17 @@ proc_mapstacks(pagetable_t kpgtbl)
 void
 procinit(void)
 {
-  printf("procinit called!\n"); 
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
+  int proc_num = -1;
   for(p = proc; p < &proc[NPROC]; p++) {
+      proc_num++;
       initlock(&p->lock, "proc");
       p->state = PROC_UNUSED;
       kthreadinit(p);
   }
-  printf("procinit ended!\n"); 
-
 }
 
 // Must be called with interrupts disabled,
@@ -96,14 +95,16 @@ mycpu(void)
 struct proc*
 myproc(void)
 {
+  struct proc* p = NULL;
   push_off();
-  struct cpu *c = mycpu();
-  struct proc *p = 0;
-  if(c->thread != NULL){
-    p = c->thread->proc;
+  
+  struct kthread* kt = mycpu()->thread;
+  if(kt != NULL) {
+    p = kt->proc;
   }
-  // struct proc *p = c->thread->proc;
+
   pop_off();
+
   return p;
 }
 
@@ -140,7 +141,6 @@ allocproc(void)
   return 0;
 
 found:
-  printf("found! in address %p\n", p);
   p->pid = allocpid();
   p->state = PROC_USED;
   p->next_tid = 1;
@@ -426,9 +426,10 @@ exit(int status)
 
     release(&kt->lock);
   }
-
-
+  
+  release(&p->lock);
   release(&wait_lock);
+
 
   // Jump into the scheduler, never to return.
   sched();
@@ -497,7 +498,7 @@ scheduler(void)
   struct proc *p;
   struct kthread *kt;
   struct cpu *c = mycpu();
-  bool all_unused = true;
+  bool all_unused = false;
   
   c->thread = NULL;
   for(;;){
@@ -506,30 +507,24 @@ scheduler(void)
 
     for(p = proc; p < &proc[NPROC]; p++) {
       
-      debug_acquire(&p->lock);
-      if(p->state != PROC_USED) {
-        debug_release(&p->lock);
-        continue;
-      }
-      printf("found an used proc!\n");
-      all_unused = false;
+      if(p->state == PROC_USED) {
+        all_unused = false;
 
-      // Switch to chosen process.  It is the process's job
-      // to release its lock and then reacquire it
-      // before jumping back to us.
-      for(kt = proc->kthread; kt < &proc->kthread[NKT]; kt++)
-      {
-        debug_acquire(&kt->lock);
-        if(kt->state == RUNNABLE) 
-        {
-          kt->state = RUNNING;
-          c->thread = kt;
-          swtch(&c->context, &kt->ctx);
-          // Thread is done running for now.
-          // It should have changed its kt->state before coming back.
-          c->thread = NULL;
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        for(kt = proc->kthread; kt < &proc->kthread[NKT]; kt++){
+          acquire(&kt->lock);
+          if(kt->state == RUNNABLE) {
+            kt->state = RUNNING;
+            c->thread = kt;
+            swtch(&c->context, &kt->ctx);
+            // Thread is done running for now.
+            // It should have changed its kt->state before coming back.
+            c->thread = NULL;
+          } 
+          release(&kt->lock);
         }
-        debug_release(&kt->lock);
       }
     }
     if(all_unused)
@@ -552,8 +547,11 @@ sched(void)
 
   if(!holding(&kt->lock))
     panic("sched kt->lock");
-  if(mycpu()->noff != 1)
+  if(mycpu()->noff != 1) {
+    printf("mycpu()->noff=%d\n", mycpu()->noff);
     panic("sched locks");
+  }
+    
   if(kt->state == RUNNING)
     panic("sched running");
   if(intr_get())
@@ -573,28 +571,6 @@ yield(void)
   kt->state = RUNNABLE;
   sched();
   release(&kt->lock);
-}
-
-// A fork child's very first scheduling by scheduler()
-// will swtch to forkret.
-void
-forkret(void)
-{
-  static int first = 1;
-
-
-  // Still holding p->lock from scheduler.
-  release(&myproc()->lock);
-
-  if (first) {
-    // File system initialization must be run in the context of a
-    // regular process (e.g., because it calls sleep), and thus cannot
-    // be run from main().
-    first = 0;
-    fsinit(ROOTDEV);
-  }
-
-  usertrapret();
 }
 
 // Atomically release lock and sleep on chan.
@@ -637,7 +613,7 @@ wakeup(void *chan)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     if(p != myproc()){
-      acquire(&p->lock);
+      // acquire(&p->lock);
       for(struct kthread* kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
         if(kt != mykthread()) {
           acquire(&kt->lock);
@@ -647,7 +623,7 @@ wakeup(void *chan)
           release(&kt->lock);
         }
       }     
-      release(&p->lock);
+      // release(&p->lock);
     }
   }
 }
