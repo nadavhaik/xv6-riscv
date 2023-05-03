@@ -94,3 +94,5 @@ struct kthread
   struct proc* proc;
   struct context ctx;
 };
+
+void freekt(struct kthread*);

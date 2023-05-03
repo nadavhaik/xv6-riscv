@@ -30,11 +30,11 @@ kforkret(void)
   usertrapret();
 }
 
-static void
+void
 freekt(struct kthread *kt)
 {
-  if(kt->trapframe)
-    kfree((void*)kt->trapframe);
+  // if(kt->trapframe)
+  //   kfree((void*)kt->trapframe);
   kt->trapframe = 0;
   kt->tid = 0;
   kt->proc = 0;
@@ -42,6 +42,7 @@ freekt(struct kthread *kt)
   kt->killed = 0;
   kt->xstate = 0;
   kt->state = UNUSED;
+  memset(&kt->ctx, 0, sizeof(kt->ctx));
 }
 
 void kthreadinit(struct proc *p)
@@ -51,13 +52,13 @@ void kthreadinit(struct proc *p)
   initlock(&p->tlock, "threads allock");
   for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
+    initlock(&kt->lock, "kt lock");
+
+    kt->state = UNUSED;
+    kt->proc = proc;
     // WARNING: Don't change this line!
     // get the pointer to the kernel stack of the kthread
     kt->kstack = KSTACK((int)((p - proc) * NKT + (kt - p->kthread)));
-
-    initlock(&kt->lock, "kt lock");
-    kt->state = UNUSED;
-    kt->proc = proc;
   } 
 
   release(&p->lock);
@@ -65,7 +66,11 @@ void kthreadinit(struct proc *p)
 
 struct kthread *mykthread()
 {
-  return mycpu()->thread;
+  push_off();
+  struct cpu *c = mycpu();
+	struct kthread *kt = c->thread;
+  pop_off();
+  return kt;
 }
 
 struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
@@ -75,8 +80,9 @@ struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
 
 int alloctid(struct proc* p)
 {
+  int next_tid;
   acquire(&p->tlock);
-  int next_tid = p->next_tid++;
+  next_tid = p->next_tid++;
   release(&p->tlock);
   return next_tid;
 }
@@ -99,13 +105,16 @@ allockt(struct proc* proc)
 found:
   kt->tid = alloctid(proc);
   kt->state = USED;
+  kt->killed = 0;
+  kt->trapframe = get_kthread_trapframe(proc, kt);
+  kt->proc = proc;
 
-  // Allocate a trapframe page.
-  if(get_kthread_trapframe(proc, kt) == 0){
-    freekt(kt);
-    release(&kt->lock);
-    return 0;
-  }
+  // // Allocate a trapframe page.
+  // if(get_kthread_trapframe(proc, kt) == 0){
+  //   freekt(kt);
+  //   release(&kt->lock);
+  //   return 0;
+  // }
 
 
   // Set up new context to start executing at forkret,
@@ -115,7 +124,6 @@ found:
   kt->ctx.sp = kt->kstack + PGSIZE;
 
 
-  // TODO: delte this after you are done with task 2.2
   return kt;
 }
 

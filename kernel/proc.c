@@ -87,7 +87,11 @@ myproc(void)
 {
   push_off();
   struct cpu *c = mycpu();
-  struct proc *p = c->thread->proc;
+  struct proc *p = 0;
+  if(c->thread != NULL){
+    p = c->thread->proc;
+  }
+  // struct proc *p = c->thread->proc;
   pop_off();
   return p;
 }
@@ -146,6 +150,7 @@ found:
     return 0;
   }
 
+
   allockt(p);
 
 
@@ -173,8 +178,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = PROC_UNUSED;
-  for(struct kthread* kt = p->kthread; kt < &p->kthread[NKT]; kt++) 
-    kfree(kt);
+  for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+    freekt(kt);
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -498,6 +503,7 @@ scheduler(void)
         acquire(&kt->lock);
         if(kt->state == RUNNABLE) 
         {
+          kt->state = RUNNING;
           c->thread = kt;
           swtch(&c->context, &kt->ctx);
           // Thread is done running for now.
