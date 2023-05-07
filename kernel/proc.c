@@ -357,8 +357,17 @@ fork(void)
   for(kt = p->kthread, nkt = np->kthread; kt < &p->kthread[NKT]; kt++, nkt++)
   {
     acquire(&kt->lock);
-    if(kt->state != UNUSED)
+    if(kt->state != UNUSED) 
+    {
+      if(nkt->state == UNUSED)
+      {
+        if(nkt != allockt(np))
+          panic("fork");
+        release(&nkt->lock);
+      }
       copy_kt(nkt, kt);
+    }
+      
     release(&kt->lock);
   }
   release(&np->lock);
