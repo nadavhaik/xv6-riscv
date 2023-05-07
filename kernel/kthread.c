@@ -15,14 +15,13 @@
   release((lock));
 
 extern struct proc proc[NPROC];
-struct cpu cpus[NCPU];
 
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
 void
 kforkret(void)
 {
-  printf("kforkret called!\n");
+  // printf("kforkret called!\n");
   static int first = 1;
 
 
@@ -58,11 +57,11 @@ freekt(struct kthread *kt)
 
 void kthreadinit(struct proc *p)
 {
-  acquire(&p->lock);
 
   initlock(&p->tlock, "threads allock");
   for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
+    // printf("initializing thread at %p\n", kt);
     initlock(&kt->lock, "kt lock");
 
     kt->state = UNUSED;
@@ -72,7 +71,6 @@ void kthreadinit(struct proc *p)
     kt->kstack = KSTACK((int)((p - proc) * NKT + (kt - p->kthread)));
   } 
 
-  release(&p->lock);
 }
 
 struct kthread *mykthread()
@@ -101,6 +99,7 @@ int alloctid(struct proc* p)
 struct kthread*
 allockt(struct proc* proc) 
 {
+  // printf("allockt called!\n");
   struct kthread *kt;
 
   for(kt = proc->kthread; kt < &proc->kthread[NKT]; kt++) {
