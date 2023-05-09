@@ -2631,20 +2631,12 @@ void klttest()
   uint64 stack_a = (uint64)malloc(MAX_STACK_SIZE);
   uint64 stack_b = (uint64)malloc(MAX_STACK_SIZE);
 
-<<<<<<< HEAD
   int kt_a = kthread_create((void *(*)())kthread_start_func, (void*)stack_a, MAX_STACK_SIZE);
-=======
-  int kt_a = kthread_create((void *(*)())kthread_start_func, stack_a, MAX_STACK_SIZE);
->>>>>>> 3dea1ddcff3118e6e314b21367eb6d2bac0d734e
   if(kt_a <= 0){
     printf("kthread_create failed\n");
     exit(1);
   }
-<<<<<<< HEAD
   int kt_b = kthread_create((void *(*)())kthread_start_func, (void*)stack_b, MAX_STACK_SIZE);
-=======
-  int kt_b = kthread_create((void *(*)())kthread_start_func, stack_b, MAX_STACK_SIZE);
->>>>>>> 3dea1ddcff3118e6e314b21367eb6d2bac0d734e
   if(kt_a <= 0){
     printf("kthread_create failed\n");
     exit(1);
