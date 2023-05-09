@@ -17,6 +17,19 @@ void set_current_thread(struct uthread* t)
     // printf("set_current_thread ended\n");
 }
 
+void uthread_print(struct uthread* t)
+{
+    printf("thread at %p with priority %d and state %d\n",t, t->priority, t->state);
+}
+
+void print_all_uthreads()
+{
+    printf("all threads:\n");
+    for(struct uthread* t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
+        uthread_print(t);
+}
+
+
 void print_ctx(struct context* ctx)
 {
     printf("CONTEXT AT %l:\n", ctx);
@@ -46,8 +59,6 @@ void raise_unimplemented_error(char* function_name)
 
 void initialize_uthreads_table()
 {
-    // printf("called initialize_uthreads_table\n");
-
     for(struct uthread* t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
     {
         memset(&t->context, 0, sizeof(t->context));
@@ -58,7 +69,6 @@ void initialize_uthreads_table()
 
 int uthread_create(void (*start_func)(), enum sched_priority priority)
 {
-    printf("called uthread_create\n");
     if(!uthreads_table_initialized) initialize_uthreads_table();
     
     for(struct uthread* t = uthreads; t < &uthreads[MAX_UTHREADS]; t++)
@@ -137,8 +147,6 @@ void uthread_sched(struct uthread* t)
     // printf("called uthread_sched for thread in address %lx\n", (uint64)t);
     struct uthread* current = uthread_self();
 
-
-
     // if current context is NULL: (main thread) -
     // context won't be backed up and will be stored temporarly as garbage
     // to avoid segfaults.
@@ -152,7 +160,7 @@ void uthread_sched(struct uthread* t)
         current_context = &new_context;
     } else
     {
-        current->state = RUNNABLE;
+        if(current->state == RUNNING) current->state = RUNNABLE;
         current_context = &current->context;
     }
         
@@ -160,21 +168,15 @@ void uthread_sched(struct uthread* t)
     
     
     set_current_thread(t);
-    uswtch(current_context, &t->context);    
 
-    // struct uthread* prev = current;
-    // prev->context = *current_context;
-    // // prev->state = RUNNABLE;
-    // set_current_thread(prev);
+    uswtch(current_context, &t->context);    
 }
 
 void uthread_scheduler()
 {
-    // printf("called uthread_scheduler\n");
     // for(;;)
     {
         uthread_dynamic_array prioritized_uthreads = find_prioritized_uthreads();
-        // printf("number_of_uthreads=%d\n", prioritized_uthreads.size);
         if(prioritized_uthreads.size == 0) exit(0);
         struct uthread* current_thread = uthread_self();
         
@@ -236,6 +238,7 @@ int uthread_start_all()
     if(uthread_self() != NULL) return -1;
     uthread_dynamic_array prioritized_uthreads = find_prioritized_uthreads();
 
+
     for(;;)
     {
         for(struct uthread** tpp = prioritized_uthreads.data; tpp < &prioritized_uthreads.data[prioritized_uthreads.size]; tpp++)
@@ -247,18 +250,15 @@ int uthread_start_all()
     return 0;
 }
 
+
 void uthread_exit() 
 {
-    printf("called uthread_exit\n");
     struct uthread* curr_t = uthread_self();
-
     curr_t->state = FREE;
-
     uthread_scheduler();
 }
 
 struct uthread* uthread_self()
 {
-    // printf("called uthread_self\n");
     return current_thread;
 }
