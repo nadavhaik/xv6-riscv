@@ -683,7 +683,7 @@ kill(int pid)
       for(struct kthread* kt = p->kthread; kt < &p->kthread[NKT]; kt++)
       {
         acquire(&kt->lock);
-
+        kt->killed = 1; //
         if(kt->state == SLEEPING) 
           kt->state = RUNNABLE;
 
@@ -703,6 +703,11 @@ setkilled(struct proc *p)
 {
   acquire(&p->lock);
   p->killed = 1;
+  for (struct kthread* kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+    acquire(&kt->lock);
+    kt->killed = 1;
+    release(&kt->lock);
+  }
   release(&p->lock);
 }
 

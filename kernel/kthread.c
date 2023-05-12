@@ -43,6 +43,7 @@ kforkret(void)
 void
 freekt(struct kthread *kt)
 {
+  acquire(&kt->lock);
   // if(kt->trapframe)
   //   kfree((void*)kt->trapframe);
   kt->trapframe = 0;
@@ -53,6 +54,7 @@ freekt(struct kthread *kt)
   kt->xstate = 0;
   kt->state = UNUSED;
   memset(&kt->ctx, 0, sizeof(kt->ctx));
+  release(&kt->lock);
 }
 
 void kthreadinit(struct proc *p)
@@ -119,7 +121,7 @@ found:
   kt->trapframe = get_kthread_trapframe(proc, kt);
   kt->proc = proc;
 
-  // // Allocate a trapframe page.
+  // Allocate a trapframe page.
   // if(get_kthread_trapframe(proc, kt) == 0){
   //   freekt(kt);
   //   release(&kt->lock);
@@ -139,18 +141,21 @@ found:
 
 int ktkilled(struct kthread* kt)
 {
+  acquire(&kt->proc->lock);
   acquire(&kt->lock);
-  int killed = kt->killed;
+  int killed = kt->killed || kt->proc->killed;
   release(&kt->lock);
+  release(&kt->proc->lock);
   return killed;
 }
 
-int kthread_create( void *(*start_func)(), void *stack, uint stack_size ){
+int kthread_create(void *(*start_func)(), void *stack, uint stack_size){
 
   struct kthread* kt;
   int ktid = -1;
 
   if ((kt = allockt(myproc())) == 0){
+    printf("allockt failed\n");
     return -1;
   }
 
@@ -167,21 +172,19 @@ int kthread_create( void *(*start_func)(), void *stack, uint stack_size ){
 
 int kthread_id(){
   
-  int k = -1;
-  struct kthread* kt = mykthread();
-  struct spinlock* lock = &kt->lock;
+  int ktid = -1;
+  struct kthread* kt = mykthread();  
+  acquire(&kt->lock);
+  ktid = kt->tid;
+  release(&kt->lock);
   
-  acquire(lock);
-  k = kt->tid;
-  release(lock);
-  
-  return k;
+  return ktid;
 }
   
 
 
 int kthread_kill(int ktid){
-  // printdebug("kthread_kill()\n");
+
   struct proc* p = myproc();
   struct kthread* kt;
 
@@ -208,7 +211,6 @@ int kthread_kill(int ktid){
 
 void kthread_wakeup(void *chan)
 {
-  // printdebug("wakeup(void *chan)\n");
 
   struct proc *p = myproc();
 
@@ -226,22 +228,20 @@ void kthread_wakeup(void *chan)
 
 
 void kthread_exit(int status){
-  // printdebug("kthread_exit()\n");
-  // struct proc* p = myproc();
+
   struct kthread* kt = mykthread();
+  int all_dead = 1;
+  struct kthread* k;
 
-
-  int everyone_are_dead = 1;
-
-  for (struct kthread* i = kt->proc->kthread; i < &kt->proc->kthread[NKT] && everyone_are_dead; i++)
+  for(k = kt->proc->kthread; k < &kt->proc->kthread[NKT] && all_dead; k++)
   {
-    acquire(&i->lock);
-    if (i->killed == 0)
-      everyone_are_dead = 0;
-    release(&i->lock);
+    acquire(&k->lock);
+    if (k->killed == 0)
+      all_dead = 0;
+    release(&k->lock);
   }
 
-  if (everyone_are_dead){
+  if(all_dead){
     exit(status);
   }
 
@@ -259,17 +259,10 @@ void kthread_exit(int status){
 // makes mykthread sleep on channel join_to, to wait for it to finish
 void kthread_sleep(struct kthread* mykthread,struct kthread* join_to){
   acquire(&mykthread->lock);
-
-
   mykthread->chan = join_to;
-  // printdebug("kthread sleep before sched() ktid %d\n", mykthread->ktid);
-  // printdebug("kthread jointo id %d state = %s\n",join_to->ktid , ktStateToString(join_to->state));
-  // printdebug("kthread mykthread id %d state = %s\n",mykthread->ktid , ktStateToString(mykthread->state));                                           
   mykthread->state = SLEEPING;
   release(&join_to->lock);
-  sched();
-  // printdebug("kthread sleep after sched()\n");
-  
+  sched(); 
   mykthread->chan = 0;
 
   release(&mykthread->lock);  
@@ -277,15 +270,12 @@ void kthread_sleep(struct kthread* mykthread,struct kthread* join_to){
 }
 
 int kthread_join(int ktid, uint64 status){
-  // printdebug("kthread_join().\n");
-  // struct kthread *mythread = mykthread();
   struct kthread *kt;
   struct kthread *join_to;
   struct proc *p = myproc();
   int found = 0;
 
   if (kthread_id() == ktid){
-    // printdebug("to join ktid is my ktid \n");
     return -1;
   }
 
@@ -299,7 +289,6 @@ int kthread_join(int ktid, uint64 status){
     if(kt->tid == ktid){
       join_to = kt;
       found = 1;
-      // printdebug("kthread_join(). calling thread ktid: %d state - %s, jointo ktid - %d state - %s\n", kthread_id(), ktStateToString(mykthread()->state), ktid, ktStateToString(kt->state));
     }
     else if (!holdingkth)
       release(&kt->lock);
@@ -307,7 +296,6 @@ int kthread_join(int ktid, uint64 status){
 
   // if not found retuen error
   if(!found){
-    // printdebug("thread to join not found \n");
     return -1;
   }
 

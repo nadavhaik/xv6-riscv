@@ -99,7 +99,7 @@ uint64 sys_kthread_create(void){
   int size;
   argint(2, &size);
 
-  return kthread_create((void *)func,(void*)stack,(uint)size);
+  return kthread_create((void *(*)())func,(void*)stack, size);
 }
 
 uint64 sys_kthread_id(void){
@@ -126,5 +126,5 @@ uint64 sys_kthread_join(void){
   uint64 status;
   argaddr(1, &status);
 
-	return kthread_join(ktid, status);
+	return kthread_join(ktid,status);
 }
