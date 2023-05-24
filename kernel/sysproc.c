@@ -48,6 +48,10 @@ sys_sbrk(void)
   return addr;
 }
 
+uint64 sys_memsize(void) {
+  return myproc()->sz;
+}
+
 uint64
 sys_sleep(void)
 {
