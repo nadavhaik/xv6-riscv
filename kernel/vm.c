@@ -233,7 +233,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
   oldsz = PGROUNDUP(oldsz);
   for(a = oldsz; a < newsz; a += PGSIZE){
-    mem = kalloc();
+    mem = add_page();
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
       return 0;

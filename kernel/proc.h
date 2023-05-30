@@ -86,11 +86,9 @@ struct page {
   enum pagelocation pagelocation;
   union {
     uint64 memaddress;
-    struct {
-      char* filename;
-      uint64 offset;
-    } disklocation;
+    uint64 fileoffset;
   } address;
+  uint64 size;
 };
 
 // Per-process state

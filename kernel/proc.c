@@ -684,3 +684,118 @@ procdump(void)
     printf("\n");
   }
 }
+
+struct page* random_physical_page(struct proc* p)
+{
+  uint arr_size = 0;
+  struct page* all_physical_pages[MAX_TOTAL_PAGES];
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
+  {
+    if(page->pagelocation == PHYSICAL)
+      all_physical_pages[arr_size++] = page;
+  }
+
+  if(arr_size == 0) {
+    panic("no physical pages");
+  }
+
+  return all_physical_pages[(uint) (frand() * arr_size)];
+}
+
+uint number_of_physical_pages(struct proc* p)
+{
+  uint counter = 0; 
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
+  {
+    if(page->pagelocation == PHYSICAL)
+      counter++;
+  }
+  return counter;
+}
+
+uint number_of_used_pages(struct proc* p)
+{
+  uint counter = 0; 
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
+  {
+    if(page->pagelocation != UNITIALIZED)
+      counter++;
+  }
+  return counter;
+}
+
+char is_offset_free(struct proc* p, uint64 offset)
+{
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++) {
+    if(page->pagelocation == VIRTUAL && page->address.fileoffset == offset)
+      return 0;
+  }
+
+  return 1;
+}
+
+uint64 first_free_offset(struct proc* p)
+{
+  for(uint64 offset = 0; offset < PGSIZE * (MAX_TOTAL_PAGES - MAX_PSYC_PAGES + 1); offset += PGSIZE) {
+    if(is_offset_free(p, offset))
+      return offset;
+  }
+  return -1;
+}
+
+struct page* next_unused_page(struct proc* p)
+{
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
+  {
+    if(page->pagelocation == UNUSED)
+      return page;
+  }
+  return 0;
+}
+
+uint64 move_random_page_to_disk(struct proc* p) 
+{
+  struct page* page_to_move = random_physical_page(p);
+  uint64 address = page_to_move->address.memaddress;
+  uint64 offset = first_free_offset(p);
+  if(offset == -1) {
+    panic("vmem file is full!");
+  }
+  writeToSwapFile(p, (char*) page_to_move->address.memaddress, offset, page_to_move->size);
+  page_to_move->pagelocation = VIRTUAL;
+  page_to_move->address.fileoffset = offset;
+
+  return address;
+}
+
+struct page* page_of_address(uint64 address)
+{
+  struct proc* p = myproc();
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
+  {
+    if(page->pagelocation == PHYSICAL && *p->pagetable == page->address.memaddress) {
+      return page;
+    }
+  }
+
+  return 0;
+}
+
+uint64 add_page()
+{
+  struct proc* p = myproc();
+  if(number_of_used_pages(p) == MAX_TOTAL_PAGES) 
+    return 0;
+  
+  uint64 mem;
+  if(number_of_physical_pages(p) < MAX_PSYC_PAGES){
+    mem = kalloc();
+  } else {
+    mem = move_random_page_to_disk(p);
+  }
+  struct page* new_entry = next_unused_page(p);
+
+  new_entry->pagelocation = PHYSICAL;
+  new_entry->size = 0;
+  new_entry->address.memaddress = mem;
+}

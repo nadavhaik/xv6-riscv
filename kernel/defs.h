@@ -111,6 +111,14 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+struct page*    random_physical_page(struct proc*);
+uint            number_of_physical_pages(struct proc*);
+uint64          move_random_page_to_disk(struct proc*);
+uint64          init_next_page( pagetable_t, uint64, uint64, int);
+struct page*    page_of_address(uint64);
+
+
+
 
 // swtch.S
 void            swtch(struct context*, struct context*);
