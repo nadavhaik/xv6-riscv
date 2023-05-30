@@ -747,7 +747,7 @@ struct page* next_unused_page(struct proc* p)
 {
   for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++)
   {
-    if(page->pagelocation == UNUSED)
+    if(page->pagelocation == UNITIALIZED)
       return page;
   }
   return 0;
@@ -781,7 +781,18 @@ struct page* page_of_address(uint64 address)
   return 0;
 }
 
-uint64 add_page()
+struct page* last_used_page()
+{
+  struct proc* p = myproc();
+  for(struct page* page = &p->pages[MAX_TOTAL_PAGES - 1]; page > p->pages; page--) {
+    if(page->pagelocation != UNITIALIZED)
+      return page;
+  }
+
+  return 0;
+}
+
+uint64 add_page(uint64 size)
 {
   struct proc* p = myproc();
   if(number_of_used_pages(p) == MAX_TOTAL_PAGES) 
@@ -789,13 +800,15 @@ uint64 add_page()
   
   uint64 mem;
   if(number_of_physical_pages(p) < MAX_PSYC_PAGES){
-    mem = kalloc();
+    mem = (uint64) kalloc();
   } else {
     mem = move_random_page_to_disk(p);
   }
   struct page* new_entry = next_unused_page(p);
 
   new_entry->pagelocation = PHYSICAL;
-  new_entry->size = 0;
+  new_entry->size = size;
   new_entry->address.memaddress = mem;
+
+  return mem;
 }

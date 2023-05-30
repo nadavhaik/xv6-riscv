@@ -116,6 +116,8 @@ uint            number_of_physical_pages(struct proc*);
 uint64          move_random_page_to_disk(struct proc*);
 uint64          init_next_page( pagetable_t, uint64, uint64, int);
 struct page*    page_of_address(uint64);
+struct page*    last_used_page();
+uint64          add_page(uint64);
 
 
 

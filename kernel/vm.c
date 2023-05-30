@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "page.h"
 
 /*
  * the kernel's page table.
@@ -214,7 +215,7 @@ uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
 
   if(sz >= PGSIZE)
     panic("uvmfirst: more than a page");
-  mem = kalloc();
+  mem = (char*) add_page(sz);
   memset(mem, 0, PGSIZE);
   mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
   memmove(mem, src, sz);
@@ -228,22 +229,29 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   char *mem;
   uint64 a;
 
-  if(newsz < oldsz)
+  if(newsz < oldsz) {
     return oldsz;
+  }
+  if(newsz < PGROUNDUP(oldsz)){
+   last_used_page()->size = newsz;
+  }
 
-  oldsz = PGROUNDUP(oldsz);
-  for(a = oldsz; a < newsz; a += PGSIZE){
-    mem = add_page();
+  int newpgscounter = 0;
+  for(a = PGROUNDUP(oldsz); a < newsz; a += PGSIZE){
+    uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
+    mem = (char*) add_page(newpgsize);
     if(mem == 0){
-      uvmdealloc(pagetable, a, oldsz);
+      uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
       return 0;
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       kfree(mem);
-      uvmdealloc(pagetable, a, oldsz);
+      uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
       return 0;
     }
+
+    newpgscounter++;
   }
   return newsz;
 }

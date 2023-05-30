@@ -1,3 +1,5 @@
+#include "page.h"
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -80,16 +82,6 @@ struct trapframe {
 };
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-enum pagelocation { UNITIALIZED, PHYSICAL, VIRTUAL };
-
-struct page {
-  enum pagelocation pagelocation;
-  union {
-    uint64 memaddress;
-    uint64 fileoffset;
-  } address;
-  uint64 size;
-};
 
 // Per-process state
 struct proc {
