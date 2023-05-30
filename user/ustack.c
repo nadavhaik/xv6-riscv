@@ -4,13 +4,8 @@ static ustack *global_ustack = 0;
 
 void* __ustack_my_malloc(uint buffer_size)
 {
-    printf("head is in %p\n", memsize());
     char* page_end = sbrk(buffer_size);
     char* new_allocated = page_end;
-    printf("allocated a new buffer with size %d in %p\n", buffer_size, new_allocated);
-    // printf("sbrk returned %p\n", page_end);
-    printf("head is now in %p\n", memsize());
-
 
     return (void*) new_allocated;
 }
