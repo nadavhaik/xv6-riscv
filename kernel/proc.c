@@ -104,6 +104,14 @@ allocpid()
 
   return pid;
 }
+void pagesinit(struct proc *p){
+  for (int i = 0; i < MAX_TOTAL_PAGES; i++)
+  {
+    p->pages[i].pagelocation = UNITIALIZED;
+    p->pages[i].size = 0;
+  }
+  
+}
 
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
@@ -148,6 +156,9 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  pagesinit(p);
+  createSwapFile(p);
 
   return p;
 }
