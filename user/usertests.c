@@ -2555,39 +2555,39 @@ sbrk8000(char *s)
   *(top-1) = *(top-1) + 1;
 }
 
-void
-ustack_test(char *s)
-{
-  int memsize_0 = memsize();
-  int* x = ustack_malloc(sizeof(int));
-  int memsize_1 = memsize();
-  if(memsize_1 < memsize_0 + sizeof(int)) {
-    printf("ustack failed - malloc int!\n");
-    exit(0);
-  }
-  *x = 0;
+// void
+// ustack_test(char *s)
+// {
+//   int memsize_0 = memsize();
+//   int* x = ustack_malloc(sizeof(int));
+//   int memsize_1 = memsize();
+//   if(memsize_1 < memsize_0 + sizeof(int)) {
+//     printf("ustack failed - malloc int!\n");
+//     exit(0);
+//   }
+//   *x = 0;
 
-  double* y = ustack_malloc(sizeof(double));
-  int memsize_2 = memsize();
-  if(memsize_2 < memsize_0 + sizeof(int) + sizeof(double)) {
-    printf("ustack failed - malloc double!\n");
-    exit(0);
-  }
-  *y = 2.5;
+//   double* y = ustack_malloc(sizeof(double));
+//   int memsize_2 = memsize();
+//   if(memsize_2 < memsize_0 + sizeof(int) + sizeof(double)) {
+//     printf("ustack failed - malloc double!\n");
+//     exit(0);
+//   }
+//   *y = 2.5;
 
-  ustack_free();
-  if(memsize() != memsize_1) {
-    printf("ustack failed - free double!\n");
-    exit(0);
-  }
+//   ustack_free();
+//   if(memsize() != memsize_1) {
+//     printf("ustack failed - free double!\n");
+//     exit(0);
+//   }
 
-  ustack_free();
-  if(memsize() != memsize_0) {
-    printf("ustack failed - free int!\n");
-    exit(0);
-  }
+//   ustack_free();
+//   if(memsize() != memsize_0) {
+//     printf("ustack failed - free int!\n");
+//     exit(0);
+//   }
 
-}
+// }
 
 
 

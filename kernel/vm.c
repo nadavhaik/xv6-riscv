@@ -209,13 +209,13 @@ uvmcreate()
 // for the very first process.
 // sz must be less than a page.
 void
-uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
+uvmfirst(struct proc* p, pagetable_t pagetable, uchar *src, uint sz)
 {
   char *mem;
 
   if(sz >= PGSIZE)
     panic("uvmfirst: more than a page");
-  mem = (char*) add_page(sz);
+  mem = (char*) add_page(p, sz);
   memset(mem, 0, PGSIZE);
   mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
   memmove(mem, src, sz);
@@ -239,7 +239,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   int newpgscounter = 0;
   for(a = PGROUNDUP(oldsz); a < newsz; a += PGSIZE){
     uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
-    mem = (char*) add_page(newpgsize);
+    mem = (char*) add_page(myproc(), newpgsize);
     if(mem == 0){
       uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
       return 0;
@@ -266,11 +266,12 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
   if(newsz >= oldsz)
     return oldsz;
 
+  int npages = 0;
   if(PGROUNDUP(newsz) < PGROUNDUP(oldsz)){
     int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
     uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
   }
-
+  removePages(pagetable, PGROUNDUP(newsz), npages, 1); 
   return newsz;
 }
 
@@ -317,12 +318,23 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uint64 pa, i;
   uint flags;
   char *mem;
+  pte_t *new_pte;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
-    if((*pte & PTE_V) == 0)
+    if (!((*pte & PTE_V) || (*pte & PTE_PG)))
       panic("uvmcopy: page not present");
+
+    if ((*pte & PTE_V) && (*pte & PTE_PG))
+      panic("uvmcopy:  The pte seems to be in both psyc and virt");
+    if (*pte & PTE_PG)
+    {
+      new_pte = walk(new, i, 1);
+      *new_pte |= PTE_FLAGS(*pte);
+      continue;
+    }
+
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)

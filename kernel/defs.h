@@ -117,8 +117,12 @@ uint64          move_random_page_to_disk(struct proc*);
 uint64          init_next_page( pagetable_t, uint64, uint64, int);
 struct page*    page_of_address(uint64);
 struct page*    last_used_page();
-uint64          add_page(uint64);
-
+uint64          add_page(struct proc*, uint64);
+void            removePages(pagetable_t , uint64 , uint64 , int);
+uint64          add_page_by_va(struct proc* ,uint64);
+int	          	lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size);
+int		        lazy_write_to_swapfile(struct proc* p, char* buffer, uint placeOnFile, uint size);
+int		        lazy_remove_swapfile(struct proc* p);
 
 
 
@@ -180,7 +184,7 @@ void            kvminithart(void);
 void            kvmmap(pagetable_t, uint64, uint64, uint64, int);
 int             mappages(pagetable_t, uint64, uint64, uint64, int);
 pagetable_t     uvmcreate(void);
-void            uvmfirst(pagetable_t, uchar *, uint);
+void            uvmfirst(struct proc*, pagetable_t, uchar *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64, int);
 uint64          uvmdealloc(pagetable_t, uint64, uint64);
 int             uvmcopy(pagetable_t, pagetable_t, uint64);

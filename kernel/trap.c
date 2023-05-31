@@ -169,6 +169,23 @@ clockintr()
   release(&tickslock);
 }
 
+void 
+page_fault(uint64 va)
+{
+	struct proc *p = myproc();
+	va = PGROUNDDOWN(va);
+	pte_t *pte = walk(p->pagetable, va, 0);
+	if(pte && (*pte & PTE_PG))
+	{
+		add_page_by_va(p, va);
+	}
+	else
+	{
+		panic("page_fault: segmentation fault");
+	}
+}
+
+
 // check if it's an external interrupt or software interrupt,
 // and handle it.
 // returns 2 if timer interrupt,
@@ -215,6 +232,11 @@ devintr()
 
     return 2;
   } else {
+    if(scause == 13 || scause == 15 || scause == 12)
+	{
+		page_fault(r_stval());
+		return 3;
+	}
     return 0;
   }
 }

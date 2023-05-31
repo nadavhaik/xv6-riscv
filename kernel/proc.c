@@ -104,13 +104,13 @@ allocpid()
 
   return pid;
 }
+
 void pagesinit(struct proc *p){
   for (int i = 0; i < MAX_TOTAL_PAGES; i++)
   {
     p->pages[i].pagelocation = UNITIALIZED;
     p->pages[i].size = 0;
   }
-  
 }
 
 // Look in the process table for an UNUSED proc.
@@ -157,8 +157,8 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  p->swapFile = 0;
   pagesinit(p);
-  createSwapFile(p);
 
   return p;
 }
@@ -253,7 +253,7 @@ userinit(void)
   
   // allocate one user page and copy initcode's instructions
   // and data into it.
-  uvmfirst(p->pagetable, initcode, sizeof(initcode));
+  uvmfirst(p, p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
@@ -761,6 +761,7 @@ struct page* next_unused_page(struct proc* p)
     if(page->pagelocation == UNITIALIZED)
       return page;
   }
+  panic("next_unused_page failed");
   return 0;
 }
 
@@ -772,7 +773,7 @@ uint64 move_random_page_to_disk(struct proc* p)
   if(offset == -1) {
     panic("vmem file is full!");
   }
-  writeToSwapFile(p, (char*) page_to_move->address.memaddress, offset, page_to_move->size);
+  lazy_write_to_swapfile(p, (char*) page_to_move->address.memaddress, offset, page_to_move->size);
   page_to_move->pagelocation = VIRTUAL;
   page_to_move->address.fileoffset = offset;
 
@@ -803,9 +804,11 @@ struct page* last_used_page()
   return 0;
 }
 
-uint64 add_page(uint64 size)
+uint64 add_page(struct proc* p, uint64 size)
 {
-  struct proc* p = myproc();
+  if(p == 0)
+    panic("add_page: cannot add to NULL proc!");
+
   if(number_of_used_pages(p) == MAX_TOTAL_PAGES) 
     return 0;
   
@@ -822,4 +825,98 @@ uint64 add_page(uint64 size)
   new_entry->address.memaddress = mem;
 
   return mem;
+}
+
+void initCurrPage(struct page* page)
+{
+  if(page->pagelocation == PHYSICAL){
+    page->pagelocation = UNITIALIZED;
+    page->size = 0;
+    page->address.memaddress = 0;
+  }
+  else if(page->pagelocation == VIRTUAL){
+    page->pagelocation = UNITIALIZED;
+    page->size = 0;
+    page->address.fileoffset = 0;
+  }
+}
+
+void removePages(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
+{
+  struct proc* p = myproc();
+  uint64 a;
+  for (a = va; a < va + npages * PGSIZE; a += PGSIZE){
+    int deleted = 0;
+    for(struct page* page = &p->pages[MAX_TOTAL_PAGES - 1]; page > p->pages && !deleted; page--) {
+      if(page->pagelocation == PHYSICAL && page->address.memaddress == a && pagetable == p->pagetable && do_free){
+        initCurrPage(page);
+        deleted = 1;
+      }
+      else if(page->pagelocation == VIRTUAL && page->address.fileoffset == a && pagetable == p->pagetable){
+        initCurrPage(page);
+        deleted = 1;
+      }
+    
+      if(number_of_used_pages(p) == 0){
+        lazy_remove_swapfile(p);
+        return;
+      }
+    }
+  }
+}
+
+uint64 add_page_by_va(struct proc* p, uint64 va)
+{
+  struct page* desiredPage = 0;
+	va = PGROUNDDOWN(va);
+  for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++){
+    if((page->pagelocation == VIRTUAL) & (page->address.fileoffset == va)){
+      desiredPage = page;
+    }
+  }
+  if (!desiredPage)
+		panic("swap_in_page: Coulnd't find page from swapfile");
+  
+  if(number_of_used_pages(p) == MAX_TOTAL_PAGES) 
+    return 0;
+  
+  uint64 mem;
+  if(number_of_physical_pages(p) < MAX_PSYC_PAGES){
+    mem = (uint64) kalloc();
+  } else {
+    mem = move_random_page_to_disk(p);
+  }
+  struct page* new_entry = next_unused_page(p);
+  
+  lazy_read_from_swapfile(p, (char*)mem, desiredPage->address.fileoffset, PGSIZE);
+  new_entry->pagelocation = PHYSICAL;
+  new_entry->size = desiredPage->size;
+  new_entry->address.memaddress = mem;
+
+  return mem;
+}
+
+int	
+lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size)
+{
+  if(p->swapFile == 0)
+    createSwapFile(p);
+  return readFromSwapFile(p, buffer, placeOnFile, size);
+}
+int 
+lazy_write_to_swapfile(struct proc* p, char* buffer, uint placeOnFile, uint size)
+{
+  if(p->swapFile == 0)
+    createSwapFile(p);
+  return writeToSwapFile(p, buffer, placeOnFile, size);
+}
+
+int	
+lazy_remove_swapfile(struct proc* p)
+{
+  if(p->swapFile == 0)
+    return 0;
+  int res = removeSwapFile(p);
+  p->swapFile = 0;
+  return res;
 }
