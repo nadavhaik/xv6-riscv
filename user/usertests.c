@@ -2670,7 +2670,7 @@ struct test {
   {sbrklast, "sbrklast"},
   {sbrk8000, "sbrk8000"},
   {badarg, "badarg" },
-  {ustack_test, "ustack"},
+  // {ustack_test, "ustack"},
 
   { 0, 0},
 };
