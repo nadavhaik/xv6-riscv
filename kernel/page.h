@@ -4,7 +4,7 @@ enum pagelocation { UNINITIALIZED, PHYSICAL, VIRTUAL };
 
 struct page {
   enum pagelocation pagelocation;
-  union {
+  struct {
     uint64 memaddress;
     uint64 fileoffset;
   } address;

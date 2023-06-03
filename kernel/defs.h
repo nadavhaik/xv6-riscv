@@ -121,12 +121,13 @@ struct page*    last_used_page();
 uint64          add_page(struct proc*, uint64);
 void            initCurrPage(struct page*);
 void            removePages(struct proc*, pagetable_t , uint64 , uint64 , int);
-uint64          add_page_by_va(struct proc* ,uint64);
+uint64          swap_in_by_va(struct proc* ,uint64);
 int	          	lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int		        lazy_write_to_swapfile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int		        lazy_remove_swapfile(struct proc* p);
 int             fork_memory(struct proc*);
 int             deep_copy_pages(struct proc*, struct proc*);
+int             is_virtual(struct proc*, uint64);
 
 
 

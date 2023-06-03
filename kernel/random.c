@@ -1,5 +1,6 @@
-#include "types.h"
 #include "random.h"
+#include "types.h"
+
 
 
 // credit: https://stackoverflow.com/questions/24005459/implementation-of-the-random-number-generator-in-c-c

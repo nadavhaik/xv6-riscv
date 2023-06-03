@@ -110,6 +110,8 @@ void pagesinit(struct proc *p){
   {
     p->pages[i].pagelocation = UNINITIALIZED;
     p->pages[i].size = 0;
+    p->pages[i].address.fileoffset = 0;
+    p->pages[i].address.memaddress = 0;
   }
 }
 
@@ -772,6 +774,7 @@ struct page* next_unused_page(struct proc* p)
   return 0;
 }
 
+
 uint64 move_random_page_to_disk(struct proc* p) 
 {
   struct page* page_to_move = random_physical_page(p);
@@ -781,6 +784,10 @@ uint64 move_random_page_to_disk(struct proc* p)
     panic("vmem file is full!");
   }
   lazy_write_to_swapfile(p, (char*) page_to_move->address.memaddress, offset, page_to_move->size);
+
+  pte_t* pte = walk(p->pagetable, address, 0);
+  *pte |= PTE_PG;
+  *pte &= ~PTE_V;
   page_to_move->pagelocation = VIRTUAL;
   page_to_move->address.fileoffset = offset;
 
@@ -884,12 +891,12 @@ void removePages(struct proc* p, pagetable_t pagetable, uint64 va, uint64 npages
   }
 }
 
-uint64 add_page_by_va(struct proc* p, uint64 va)
+uint64 swap_in_by_va(struct proc* p, uint64 va)
 {
   struct page* desiredPage = 0;
 	va = PGROUNDDOWN(va);
   for(struct page* page = p->pages; page < &p->pages[MAX_TOTAL_PAGES]; page++){
-    if((page->pagelocation == VIRTUAL) & (page->address.fileoffset == va)){
+    if((page->pagelocation == VIRTUAL) && (page->address.memaddress == va)){
       desiredPage = page;
     }
   }
@@ -908,6 +915,10 @@ uint64 add_page_by_va(struct proc* p, uint64 va)
   struct page* new_entry = next_unused_page(p);
   
   lazy_read_from_swapfile(p, (char*)mem, desiredPage->address.fileoffset, PGSIZE);
+  pte_t* pte = walk(p->pagetable, va, 0);
+  *pte &= ~PTE_PG;
+  *pte |= PTE_V;
+
   new_entry->pagelocation = PHYSICAL;
   new_entry->size = desiredPage->size;
   new_entry->address.memaddress = mem;
@@ -946,18 +957,13 @@ int deep_copy_pages(struct proc *p, struct proc *np)
   int vir_counter = 0;
   for (int i = 0; i < MAX_TOTAL_PAGES; i++)
   {
-    np->pages[i].pagelocation = p->pages[i].pagelocation;
+    np->pages[i] = p->pages[i];
     if(p->pages[i].pagelocation == VIRTUAL){
 
       if(readFromSwapFile(p, buffer, vir_counter * PGSIZE, PGSIZE) < 0) return -1;
       if(writeToSwapFile(np, buffer, vir_counter * PGSIZE, PGSIZE) < 0) return -1;
-      np->pages[i].address.fileoffset = p->pages[i].address.fileoffset;
-      np->pages[i].size = p->pages[i].size;
+      
       vir_counter++;
-    }
-    else if(p->pages[i].pagelocation == PHYSICAL){
-      np->pages[i].address.memaddress = p->pages[i].address.memaddress;
-      np->pages[i].size = p->pages[i].size;
     }
   }
   kfree(buffer);

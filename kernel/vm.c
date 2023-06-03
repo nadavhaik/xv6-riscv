@@ -244,14 +244,13 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   uint64 a;
 
   if(newsz < oldsz) {
+    last_used_page()->size = newsz;
     return oldsz;
   }
-  if(newsz < PGROUNDUP(oldsz)){
-   last_used_page()->size = newsz;
-  }
+  oldsz = PGROUNDUP(oldsz);
 
   int newpgscounter = 0;
-  for(a = PGROUNDUP(oldsz); a < newsz; a += PGSIZE){
+  for(a = oldsz; a < newsz; a += PGSIZE){
     uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
     mem = (char*) add_page(myproc(), newpgsize);
     if(mem == 0){

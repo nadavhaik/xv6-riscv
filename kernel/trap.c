@@ -177,11 +177,11 @@ page_fault(uint64 va)
 	pte_t *pte = walk(p->pagetable, va, 0);
 	if(pte && (*pte & PTE_PG))
 	{
-		add_page_by_va(p, va);
+		swap_in_by_va(p, va);
 	}
 	else
 	{
-		panic("page_fault: segmentation fault");
+		panic("page_fault: segfault");
 	}
 }
 
