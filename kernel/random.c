@@ -1,10 +1,9 @@
 #include "types.h"
-#include "syscall.h"
 #include "random.h"
+
 
 // credit: https://stackoverflow.com/questions/24005459/implementation-of-the-random-number-generator-in-c-c
 
-extern uint64 sys_uptime(void);
 
 
 char is_seed_initialized = 0;
@@ -19,14 +18,14 @@ void __srand(unsigned int seed)
 uint64 irand(void)
 { 
     if(!is_seed_initialized) {
-        __srand(sys_uptime());
+        __srand(0);
         is_seed_initialized = 1;
     }
     next = next * 1103515245 + 12345; 
     return (uint64)(next/65536) % RAND_MAX; 
 }
 
-float frand(void)
+uint64 random_in_range(uint64 min, uint64 max)
 {
-    return ((float) irand()) / RAND_MAX;
+    return (irand() * (max - min)) / RAND_MAX + min; 
 }

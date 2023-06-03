@@ -174,6 +174,7 @@ void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
+uint            get_ticks_nolock(void);
 
 // uart.c
 void            uartinit(void);
@@ -213,8 +214,7 @@ void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
 // random.c
-float irand(void);
-float frand(void);
+uint64 random_in_range(uint64 min, uint64 max);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

@@ -241,3 +241,8 @@ devintr()
   }
 }
 
+uint get_ticks_nolock(void)
+{
+  return ticks;
+}
+

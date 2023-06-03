@@ -715,7 +715,9 @@ struct page* random_physical_page(struct proc* p)
     panic("no physical pages");
   }
 
-  return all_physical_pages[(uint) (frand() * arr_size)];
+  uint random_index = (uint) random_in_range(0, arr_size);
+
+  return all_physical_pages[random_index];
 }
 
 uint number_of_physical_pages(struct proc* p)

@@ -4,7 +4,11 @@
         "riscv.h": "c",
         "defs.h": "c",
         "ustack.h": "c",
-        "user.h": "c"
+        "user.h": "c",
+        "*.tcc": "c",
+        "cstdlib": "c",
+        "memory": "c",
+        "random.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
 }

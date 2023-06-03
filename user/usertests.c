@@ -3110,13 +3110,20 @@ drivetests(int quick, int continuous, char *justone) {
   return 0;
 }
 
+int printcounter = 0;
+void print_and_count()
+{
+  printf("%d\n", printcounter++);
+} 
+
 int
 main(int argc, char *argv[])
 {
+   print_and_count();
   int continuous = 0;
   int quick = 0;
   char *justone = 0;
-
+print_and_count();
   if(argc == 2 && strcmp(argv[1], "-q") == 0){
     quick = 1;
   } else if(argc == 2 && strcmp(argv[1], "-c") == 0){
@@ -3129,6 +3136,7 @@ main(int argc, char *argv[])
     printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
     exit(1);
   }
+  print_and_count();
   if (drivetests(quick, continuous, justone)) {
     exit(1);
   }
