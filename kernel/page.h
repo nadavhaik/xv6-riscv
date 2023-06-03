@@ -1,6 +1,6 @@
 #include "types.h"
 
-enum pagelocation { UNITIALIZED, PHYSICAL, VIRTUAL };
+enum pagelocation { UNINITIALIZED, PHYSICAL, VIRTUAL };
 
 struct page {
   enum pagelocation pagelocation;

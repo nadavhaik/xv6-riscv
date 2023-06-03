@@ -115,14 +115,18 @@ struct page*    random_physical_page(struct proc*);
 uint            number_of_physical_pages(struct proc*);
 uint64          move_random_page_to_disk(struct proc*);
 uint64          init_next_page( pagetable_t, uint64, uint64, int);
-struct page*    page_of_address(uint64);
+struct page*    page_of_address(uint64); // for physical mamory
+struct page*    get_page_by_address(uint64); // for all kinds of memory
 struct page*    last_used_page();
 uint64          add_page(struct proc*, uint64);
-void            removePages(pagetable_t , uint64 , uint64 , int);
+void            initCurrPage(struct page*);
+void            removePages(struct proc*, pagetable_t , uint64 , uint64 , int);
 uint64          add_page_by_va(struct proc* ,uint64);
 int	          	lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int		        lazy_write_to_swapfile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int		        lazy_remove_swapfile(struct proc* p);
+int             fork_memory(struct proc*);
+int             deep_copy_pages(struct proc*, struct proc*);
 
 
 
@@ -187,7 +191,7 @@ pagetable_t     uvmcreate(void);
 void            uvmfirst(struct proc*, pagetable_t, uchar *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64, int);
 uint64          uvmdealloc(pagetable_t, uint64, uint64);
-int             uvmcopy(pagetable_t, pagetable_t, uint64);
+int             uvmcopy(struct proc*,pagetable_t, pagetable_t, uint64);
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);

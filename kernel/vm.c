@@ -188,6 +188,20 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
+
+    // struct page *page = get_page_by_address(a);
+    // // if va in memory, delete it
+    // if (do_free && page->pagelocation == PHYSICAL)
+		// {
+		// 	uint64 pa = PTE2PA(*pte);
+		// 	kfree((void*)pa);
+    // 	initCurrPage(page);
+    // } 
+		// else if (page->pagelocation == VIRTUAL)
+		// {
+    // 	initCurrPage(page);
+		// }
+
     *pte = 0;
   }
 }
@@ -271,7 +285,7 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
     uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
   }
-  removePages(pagetable, PGROUNDUP(newsz), npages, 1); 
+  removePages(myproc(), pagetable, PGROUNDUP(newsz), npages, 1); 
   return newsz;
 }
 
@@ -312,7 +326,7 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
 int
-uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
+uvmcopy(struct proc* p, pagetable_t old, pagetable_t new, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
@@ -323,22 +337,24 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
-    if (!((*pte & PTE_V) || (*pte & PTE_PG)))
+    if((*pte & PTE_V) == 0 && (*pte & PTE_PG) == 0)
       panic("uvmcopy: page not present");
 
     if ((*pte & PTE_V) && (*pte & PTE_PG))
       panic("uvmcopy:  The pte seems to be in both psyc and virt");
+    
     if (*pte & PTE_PG)
-    {
-      new_pte = walk(new, i, 1);
-      *new_pte |= PTE_FLAGS(*pte);
-      continue;
-    }
+		{
+			if ((new_pte = walk(new, i, 1)) == 0)
+				goto err;
+			*new_pte |= PTE_FLAGS(*pte);
+			continue;
+		}
 
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
-      goto err;
+      goto err;  
     memmove(mem, (char*)pa, PGSIZE);
     if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
@@ -362,6 +378,7 @@ uvmclear(pagetable_t pagetable, uint64 va)
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     panic("uvmclear");
+  // removePages(myproc(), pagetable, (uint64)pte, 1, 1);
   *pte &= ~PTE_U;
 }
 
