@@ -111,15 +111,13 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
-struct page*    random_physical_page(struct proc*);
+pte_t*          random_physical_page(struct proc*);
 uint            number_of_physical_pages(struct proc*);
 uint64          move_random_page_to_disk(struct proc*);
 uint64          init_next_page( pagetable_t, uint64, uint64, int);
-struct page*    page_of_address(uint64); // for physical mamory
-struct page*    get_page_by_address(uint64); // for all kinds of memory
-struct page*    last_used_page();
-uint64          add_page(struct proc*, uint64);
-void            initCurrPage(struct page*);
+pte_t*          last_used_page();
+uint64          add_page(struct proc*, pagetable_t, uint64, int, int, int);
+void            initCurrPage(struct pageondisk*);
 void            removePages(struct proc*, pagetable_t , uint64 , uint64 , int);
 uint64          swap_in_by_va(struct proc* ,uint64);
 int	          	lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size);
@@ -127,7 +125,7 @@ int		        lazy_write_to_swapfile(struct proc* p, char* buffer, uint placeOnFi
 int		        lazy_remove_swapfile(struct proc* p);
 int             fork_memory(struct proc*);
 int             deep_copy_pages(struct proc*, struct proc*);
-int             is_virtual(struct proc*, uint64);
+uint64          vaof(struct proc*, pte_t*);
 
 
 

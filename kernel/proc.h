@@ -101,12 +101,14 @@ struct proc {
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
-  struct page pages[MAX_TOTAL_PAGES];
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct pageondisk pagesondisk[MAX_PAGES_ON_DISK];
+  int total_number_of_pages;
+  
 
 
   struct file *swapFile;

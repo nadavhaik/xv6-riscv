@@ -229,44 +229,10 @@ uvmfirst(struct proc* p, pagetable_t pagetable, uchar *src, uint sz)
 
   if(sz >= PGSIZE)
     panic("uvmfirst: more than a page");
-  mem = (char*) add_page(p, sz);
+  mem = (char*) kalloc();
   memset(mem, 0, PGSIZE);
   mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
   memmove(mem, src, sz);
-}
-
-// Allocate PTEs and physical memory to grow process from oldsz to
-// newsz, which need not be page aligned.  Returns new size or 0 on error.
-uint64
-uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
-{
-  char *mem;
-  uint64 a;
-
-  if(newsz < oldsz) {
-    last_used_page()->size = newsz;
-    return oldsz;
-  }
-  oldsz = PGROUNDUP(oldsz);
-
-  int newpgscounter = 0;
-  for(a = oldsz; a < newsz; a += PGSIZE){
-    uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
-    mem = (char*) add_page(myproc(), newpgsize);
-    if(mem == 0){
-      uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
-      return 0;
-    }
-    memset(mem, 0, PGSIZE);
-    if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
-      kfree(mem);
-      uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
-      return 0;
-    }
-
-    newpgscounter++;
-  }
-  return newsz;
 }
 
 // Deallocate user pages to bring the process size from oldsz to
@@ -284,7 +250,7 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
     uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
   }
-  removePages(myproc(), pagetable, PGROUNDUP(newsz), npages, 1); 
+  // removePages(myproc(), pagetable, PGROUNDUP(newsz), npages, 1); 
   return newsz;
 }
 
@@ -293,17 +259,17 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
 void
 freewalk(pagetable_t pagetable)
 {
-  // there are 2^9 = 512 PTEs in a page table.
-  for(int i = 0; i < 512; i++){
+  for(int i = 0; i < MAX_TOTAL_PAGES; i++){
     pte_t pte = pagetable[i];
     if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
       // this PTE points to a lower-level page table.
       uint64 child = PTE2PA(pte);
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
-    } else if(pte & PTE_V){
-      panic("freewalk: leaf");
-    }
+    } 
+    // else if(pte & PTE_V){
+    //   panic("freewalk: leaf");
+    // }
   }
   kfree((void*)pagetable);
 }

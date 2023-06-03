@@ -1,5 +1,6 @@
-struct stat;
+#include "kernel/types.h"
 
+struct stat;
 // system calls
 int fork(void);
 int exit(int) __attribute__((noreturn));
