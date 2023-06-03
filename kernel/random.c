@@ -6,9 +6,9 @@
 // credit: https://stackoverflow.com/questions/24005459/implementation-of-the-random-number-generator-in-c-c
 
 
-
 char is_seed_initialized = 0;
 static uint64 next = 1;
+extern uint ticks;
 
 void __srand(unsigned int seed) 
 { 
@@ -19,7 +19,7 @@ void __srand(unsigned int seed)
 uint64 irand(void)
 { 
     if(!is_seed_initialized) {
-        __srand(0);
+        __srand(ticks);
         is_seed_initialized = 1;
     }
     next = next * 1103515245 + 12345; 
