@@ -399,6 +399,11 @@ exit(int status)
 
   release(&wait_lock);
 
+  #ifndef NONE
+  if (p->pid > 2)
+    removeSwapFile(p);
+  #endif
+  
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
@@ -905,7 +910,11 @@ uint64 add_page_by_va(struct proc* p, uint64 va)
   }
   struct page* new_entry = next_unused_page(p);
   
-  lazy_read_from_swapfile(p, (char*)mem, desiredPage->address.fileoffset, PGSIZE);
+  if(lazy_read_from_swapfile(p, (char*)mem, desiredPage->address.fileoffset, PGSIZE) < 0)
+  {
+    kfree((void*) mem);
+    return -1;
+  }
   new_entry->pagelocation = PHYSICAL;
   new_entry->size = desiredPage->size;
   new_entry->address.memaddress = mem;

@@ -180,27 +180,34 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
-    if((*pte & PTE_V) == 0)
+    if((*pte & PTE_V) == 0 && (*pte & PTE_PG) == 0)
       panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
+      
+    #ifdef NONE
     if(do_free){
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
-
-    // struct page *page = get_page_by_address(a);
-    // // if va in memory, delete it
-    // if (do_free && page->pagelocation == PHYSICAL)
-		// {
-		// 	uint64 pa = PTE2PA(*pte);
-		// 	kfree((void*)pa);
-    // 	initCurrPage(page);
-    // } 
-		// else if (page->pagelocation == VIRTUAL)
-		// {
-    // 	initCurrPage(page);
-		// }
+    struct proc *p = myproc();
+    struct page *page = get_page_by_address(a);
+    // if va in memory, delete it
+    if (do_free && page->pagelocation == PHYSICAL)
+    {
+      uint64 pa = PTE2PA(*pte);
+      kfree((void*)pa);
+      page->pagelocation = UNINITIALIZED;
+      page->size = 0;
+      page->address.memaddress = 0;
+    }
+    else if (page->pagelocation == VIRTUAL)
+    {
+      page->pagelocation = UNINITIALIZED;
+      page->size = 0;
+      page->address.fileoffset = 0;
+    }
+    #endif
 
     *pte = 0;
   }
