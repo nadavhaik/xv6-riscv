@@ -725,7 +725,7 @@ pte_t* random_physical_page(pagetable_t pagetable, struct pageondisk* pages)
   for(int i=0; i<total_pages; i++)
   {
     pte_t* pte = &pagetable[i];
-    if(pte && !(*pte & PTE_PG))
+    if(pte && (*pte & ~PTE_PG))
     {
       ptes[arrsize++] = pte;
     }
@@ -758,7 +758,7 @@ uint number_of_used_pages(pagetable_t pagetable)
     if(walkaddr(pagetable, counter * PGSIZE) == 0)
       return counter;
   }
-  return -1;
+  return 0;
 }
 
 struct pageondisk* get_diskspace(struct pageondisk* pages, uint64 va)
@@ -907,7 +907,11 @@ uint64 swap_in_by_va(struct proc* p, uint64 va)
   *pte &= ~PTE_PG;
   *pte |= PTE_V;
 
-  
+  page->fileoffset = 0;
+  page->flags = 0;
+  page->va = 0;
+  page->pa = 0;
+
 
   return 0;
 }
