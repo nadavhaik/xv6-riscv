@@ -1022,7 +1022,7 @@ uvmalloc(pagetable_t pagetable, struct pageondisk* diskpages, uint64 oldsz, uint
   for(a = oldsz; a < newsz; a += PGSIZE){
     uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
 
-    mem = (char*) add_page(p->pagesondisk, pagetable, newpgsize, a, xperm, oldsz);
+    mem = (char*) add_page(diskpages, pagetable, newpgsize, a, xperm, oldsz);
     if(mem == 0)
       return 0;
     newpgscounter++;
