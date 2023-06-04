@@ -210,6 +210,7 @@ proc_pagetable(struct proc *p)
   pagetable = uvmcreate();
   if(pagetable == 0)
     return 0;
+  
 
   // map the trampoline code (for system call return)
   // at the highest user virtual address.
@@ -292,7 +293,7 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+    if((sz = uvmalloc(p->pagetable, p->pagesondisk, sz, sz + n, PTE_W)) == 0) {
       return -1;
     }
   } else if(n < 0){
@@ -715,14 +716,15 @@ procdump(void)
   }
 }
 
-pte_t* random_physical_page(struct proc* p)
+pte_t* random_physical_page(pagetable_t pagetable, struct pageondisk* pages)
 {
   pte_t* ptes[MAX_TOTAL_PAGES];
   int arrsize = 0;
+  int total_pages = number_of_used_pages(pagetable);
 
-  for(int i=0; i<p->total_number_of_pages; i++)
+  for(int i=0; i<total_pages; i++)
   {
-    pte_t* pte = &p->pagetable[i];
+    pte_t* pte = &pagetable[i];
     if(!(*pte & PTE_PG))
     {
       ptes[arrsize++] = pte;
@@ -737,26 +739,32 @@ pte_t* random_physical_page(struct proc* p)
   return ptes[random_index];
 }
 
-uint number_of_physical_pages(struct proc* p)
+uint number_of_physical_pages(pagetable_t pagetable, struct pageondisk* pages)
 {
   uint counter = 0; 
-  for(struct pageondisk* page = p->pagesondisk; page < &p->pagesondisk[MAX_PAGES_ON_DISK]; page++)
+  for(struct pageondisk* page = pages; page < &pages[MAX_PAGES_ON_DISK]; page++)
   {
     if(page->va != 0)
       counter++;
   }
-  return number_of_used_pages(p) - counter;
+  return number_of_used_pages(pagetable) - counter;
 }
 
-uint number_of_used_pages(struct proc* p)
+uint number_of_used_pages(pagetable_t pagetable)
 {
-  return p->total_number_of_pages;
+  
+  for(int counter = 0; counter < MAX_PAGES_ON_DISK; counter++)
+  {
+    if(walkaddr(pagetable, counter * PGSIZE) == 0)
+      return counter;
+  }
+  return -1;
 }
 
-struct pageondisk* get_diskspace(struct proc* p, uint64 va)
+struct pageondisk* get_diskspace(struct pageondisk* pages, uint64 va)
 {
 
-  for(struct pageondisk* page = p->pagesondisk; page < &p->pagesondisk[MAX_PAGES_ON_DISK]; page++)
+  for(struct pageondisk* page = pages; page < &pages[MAX_PAGES_ON_DISK]; page++)
   {
     if(page->va == va)
       return page;
@@ -765,7 +773,7 @@ struct pageondisk* get_diskspace(struct proc* p, uint64 va)
   // no entry - trying to allocate
   for(int i=0; i<MAX_PAGES_ON_DISK;i++)
   {
-    struct pageondisk* page = &p->pagesondisk[i];
+    struct pageondisk* page = &pages[i];
     if(page->va == 0)
     {
       page->va = va;
@@ -779,11 +787,11 @@ struct pageondisk* get_diskspace(struct proc* p, uint64 va)
 
 
 
-uint64 move_random_page_to_disk(struct proc* p) 
+uint64 move_random_page_to_disk(pagetable_t pagetable, struct pageondisk *pages) 
 {
-  pte_t* pte = random_physical_page(p);
+  pte_t* pte = random_physical_page(pagetable, pages);
   uint64 pa = PTE2PA(*pte);
-  struct pageondisk* diskpage = get_diskspace(p, (uint64)pte);
+  struct pageondisk* diskpage = get_diskspace(pages, (uint64)pte);
   
   if(diskpage == 0) {
     panic("vmem file is full!");
@@ -793,7 +801,7 @@ uint64 move_random_page_to_disk(struct proc* p)
 
   uint64 offset = diskpage->fileoffset;
 
-  lazy_write_to_swapfile(p, (char*) pa, diskpage->fileoffset, PGSIZE);
+  lazy_write_to_swapfile(myproc(), (char*) pa, diskpage->fileoffset, PGSIZE);
 
   *pte |= PTE_PG;
   *pte &= ~PTE_V;
@@ -820,19 +828,19 @@ struct proc* proc_of_pte(pagetable_t pagetable)
   return 0;
 }
 
-uint64 add_page(struct proc* p, pagetable_t pagetable, uint64 size, int a, int xperm, int oldsz)
+uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, int a, int xperm, int oldsz)
 {
-  if(p == 0)
-    panic("add_page: cannot add to NULL proc!");
+  if(pages == 0)
+    panic("add_page: cannot add to NULL table!");
 
-  if(number_of_used_pages(p) == MAX_TOTAL_PAGES) 
+  if(number_of_used_pages(pages) == MAX_TOTAL_PAGES) 
     return 0;
   
   uint64 mem;
-  if(number_of_physical_pages(p) < MAX_PSYC_PAGES){
+  if(number_of_physical_pages(pagetable, pages) < MAX_PSYC_PAGES){
     mem = (uint64) kalloc();
   } else {
-    mem = move_random_page_to_disk(p);
+    mem = move_random_page_to_disk(pagetable, pages);
   }
 
   if(mem == 0){
@@ -851,7 +859,6 @@ uint64 add_page(struct proc* p, pagetable_t pagetable, uint64 size, int a, int x
 
   // printf("pid: %d: adding page at %p\n", p->pid, mem);
   
-  p->total_number_of_pages++;
 
   return mem;
 }
@@ -870,7 +877,7 @@ superwalk(struct proc* p, uint64 va)
       swap_in_by_va(p, page->va);
       return (pte_t *)page->va;
   }
-  return ;
+  return 0;
 }
 
 void initCurrPage(struct pageondisk* page)
@@ -882,7 +889,7 @@ void initCurrPage(struct pageondisk* page)
 uint64 swap_in_by_va(struct proc* p, uint64 va)
 {
 	va = PGROUNDDOWN(va);
-  uint64 pa = move_random_page_to_disk(p);
+  uint64 pa = move_random_page_to_disk(p->pagetable, p->pagesondisk);
   struct pageondisk* page = get_diskspace(p, va);
   lazy_read_from_swapfile(p, pa, page->fileoffset, PGSIZE);
   if(!mappages(p->pagetable, va, PGSIZE, pa, page->flags))
@@ -962,7 +969,7 @@ int fork_memory(struct proc *np)
 
 uint64 vaof(struct proc* p, pte_t* pte)
 {
-  return PTE2PA(*pte) - PTE2PA(*p->pagetable);
+  return (uint64)pte;
 }
 
 // void removePages(struct proc* p, pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
@@ -994,10 +1001,11 @@ uint64 vaof(struct proc* p, pte_t* pte)
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 uint64
-uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
+uvmalloc(pagetable_t pagetable, struct pageondisk* diskpages, uint64 oldsz, uint64 newsz, int xperm)
 {
   char *mem;
   uint64 a;
+  struct proc* p = myproc();
 
   if(newsz < oldsz) {
     return oldsz;
@@ -1007,10 +1015,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
   int newpgscounter = 0;
   for(a = oldsz; a < newsz; a += PGSIZE){
     uint64 newpgsize = newpgscounter < (newsz - oldsz) / PGSIZE ? PGSIZE : newsz % PGSIZE;
-    // uint64 newpgsize = PGSIZE;
-    // uint64 add_page(struct proc* p, uint64 size, int a, int xperm, int oldsz)
 
-    mem = (char*) add_page(myproc(), pagetable, newpgsize, a, xperm, oldsz);
+    mem = (char*) add_page(p->pagesondisk, pagetable, newpgsize, a, xperm, oldsz);
     if(mem == 0)
       return 0;
     newpgscounter++;

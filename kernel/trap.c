@@ -176,7 +176,11 @@ page_fault(uint64 va)
   uint64 originalva = va;
 	va = PGROUNDDOWN(va);
 	pte_t *pte = superwalk(p, va);
-  uint64 pa = walkaddr(p->pagetable, va);
+  // uint64 pa = walkaddr(p->pagetable, va);
+  if(va == 0 || pte == 0)
+  {
+    panic("segfault");
+  }
  
 	if(pte && (*pte & PTE_PG))
 	{
@@ -185,8 +189,7 @@ page_fault(uint64 va)
   else 
   {
     if(pte == 0) {
-      printf("pagefault: physical: %p, virtual: %p\n", pa, va);
-      printf("pagefault: physical original: %p, virtual original: %p\n", walkaddr(p->pagetable, originalva), originalva);
+      printf("pagefault: virtual: %p\n", va);
       panic("page_fault: segfault");
     }
   }
