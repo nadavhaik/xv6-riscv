@@ -1,4 +1,6 @@
 struct pageondisk {
-  pte_t* pte;
+  uint64 va;
+  uint64 pa;
   uint64 fileoffset;
+  int flags;
 };

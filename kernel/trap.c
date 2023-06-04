@@ -175,19 +175,20 @@ page_fault(uint64 va)
 	struct proc *p = myproc();
   uint64 originalva = va;
 	va = PGROUNDDOWN(va);
-	pte_t *pte = walk(p->pagetable, va, 0);
+	pte_t *pte = superwalk(p, va);
   uint64 pa = walkaddr(p->pagetable, va);
-  // printf("pagefault: physical: %p, virtual: %p\n", pa, va);
-  // printf("pagefault: physical original: %p, virtual original: %p\n", walkaddr(p->pagetable, originalva), originalva);
+ 
 	if(pte && (*pte & PTE_PG))
 	{
 		swap_in_by_va(p, va);
 	}
   else 
   {
-    pte_t* pte = walk(p->pagetable, va, 0);
-    if(pte == 0)
+    if(pte == 0) {
+      printf("pagefault: physical: %p, virtual: %p\n", pa, va);
+      printf("pagefault: physical original: %p, virtual original: %p\n", walkaddr(p->pagetable, originalva), originalva);
       panic("page_fault: segfault");
+    }
   }
 }
 

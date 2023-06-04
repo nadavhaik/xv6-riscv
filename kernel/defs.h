@@ -112,12 +112,12 @@ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 pte_t*          random_physical_page(struct proc*);
+uint            number_of_used_pages(struct proc*);
 uint            number_of_physical_pages(struct proc*);
 uint64          move_random_page_to_disk(struct proc*);
 uint64          init_next_page( pagetable_t, uint64, uint64, int);
 pte_t*          last_used_page();
 uint64          add_page(struct proc*, pagetable_t, uint64, int, int, int);
-void            initCurrPage(struct pageondisk*);
 void            removePages(struct proc*, pagetable_t , uint64 , uint64 , int);
 uint64          swap_in_by_va(struct proc* ,uint64);
 int	          	lazy_read_from_swapfile(struct proc * p, char* buffer, uint placeOnFile, uint size);
@@ -126,6 +126,7 @@ int		        lazy_remove_swapfile(struct proc* p);
 int             fork_memory(struct proc*);
 int             deep_copy_pages(struct proc*, struct proc*);
 uint64          vaof(struct proc*, pte_t*);
+pte_t *         superwalk(struct proc*, uint64);
 
 
 
