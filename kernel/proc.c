@@ -799,7 +799,6 @@ uint64 move_random_page_to_disk(pagetable_t pagetable, struct pageondisk *pages)
   diskpage->pa = pa;
   diskpage->flags = PTE_FLAGS(*pte);
 
-  uint64 offset = diskpage->fileoffset;
 
   lazy_write_to_swapfile(myproc(), (char*) pa, diskpage->fileoffset, PGSIZE);
 
@@ -837,7 +836,7 @@ uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, in
   if(pages == 0)
     panic("add_page: cannot add to NULL table!");
 
-  if(number_of_used_pages(pages) == MAX_TOTAL_PAGES) 
+  if(number_of_used_pages(pagetable) == MAX_TOTAL_PAGES) 
     return 0;
   
   uint64 mem;
@@ -855,11 +854,11 @@ uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, in
   
 
   if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
-    kfree(mem);
+    kfree((void*)mem);
     uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
     return 0;
   }
-  memset(mem, 0, PGSIZE);
+  memset((void*)mem, 0, PGSIZE);
 
 
 
@@ -898,8 +897,8 @@ uint64 swap_in_by_va(struct proc* p, uint64 va)
 {
 	va = PGROUNDDOWN(va);
   uint64 pa = move_random_page_to_disk(p->pagetable, p->pagesondisk);
-  struct pageondisk* page = get_diskspace(p, va);
-  lazy_read_from_swapfile(p, pa, page->fileoffset, PGSIZE);
+  struct pageondisk* page = get_diskspace(p->pagesondisk, va);
+  lazy_read_from_swapfile(p, (char*) pa, page->fileoffset, PGSIZE);
   if(!mappages(p->pagetable, va, PGSIZE, pa, page->flags))
     panic("swap_by_va");
   
@@ -941,7 +940,6 @@ lazy_remove_swapfile(struct proc* p)
 
 int deep_copy_pages(struct proc *p, struct proc *np)
 {
-  int vir_counter = 0;
   char* buffer = kalloc();
   for (int i = 0; i < MAX_PAGES_ON_DISK; i++)
   {
@@ -1011,7 +1009,6 @@ uvmalloc(pagetable_t pagetable, struct pageondisk* diskpages, uint64 oldsz, uint
 {
   char *mem;
   uint64 a;
-  struct proc* p = myproc();
 
   if(newsz < oldsz) {
     return oldsz;

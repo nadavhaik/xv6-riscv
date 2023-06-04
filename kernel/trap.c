@@ -173,7 +173,7 @@ void
 page_fault(uint64 va)
 {
 	struct proc *p = myproc();
-  uint64 originalva = va;
+  // uint64 originalva = va;
 	va = PGROUNDDOWN(va);
 	pte_t *pte = superwalk(p, va);
   // uint64 pa = walkaddr(p->pagetable, va);
