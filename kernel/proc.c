@@ -806,7 +806,11 @@ uint64 move_random_page_to_disk(pagetable_t pagetable, struct pageondisk *pages)
   *pte |= PTE_PG;
   *pte &= ~PTE_V;
 
-  return PTE2PA(*pte);
+  uint64 pte_content = *pte;
+  // uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
+
+
+  return PTE2PA(pte_content);
 }
 
 
@@ -839,14 +843,16 @@ uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, in
   uint64 mem;
   if(number_of_physical_pages(pagetable, pages) < MAX_PSYC_PAGES){
     mem = (uint64) kalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
+      return 0;
+    }
   } else {
     mem = move_random_page_to_disk(pagetable, pages);
+    if(mem == 0)
+     return 0;
   }
-
-  if(mem == 0){
-     uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
-    return 0;
-  }
+  
 
   if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
     kfree(mem);
@@ -873,9 +879,11 @@ superwalk(struct proc* p, uint64 va)
   for(int i=0; i<MAX_PAGES_ON_DISK; i++)
   {
     struct pageondisk* page = &p->pagesondisk[i];
-    if(page->va != 0 && page->va == va)
+    if(page->va != 0 && page->va == va) 
+    {
       swap_in_by_va(p, page->va);
-      return (pte_t *)page->va;
+      return walk(p->pagetable, va, 0);
+    }
   }
   return 0;
 }
@@ -895,9 +903,7 @@ uint64 swap_in_by_va(struct proc* p, uint64 va)
   if(!mappages(p->pagetable, va, PGSIZE, pa, page->flags))
     panic("swap_by_va");
   
-  pte_t* pte = (pte_t*) va;
-
-
+  pte_t* pte = walk(p->pagetable, va, 0);
 
   *pte &= ~PTE_PG;
   *pte |= PTE_V;

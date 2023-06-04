@@ -12,5 +12,5 @@
 #define FSSIZE       2000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
 #define MAX_PSYC_PAGES  16 // max physical memory pages per process
-#define MAX_TOTAL_PAGES 64 // max total memory pages per process
+#define MAX_TOTAL_PAGES 32 // max total memory pages per process
 #define MAX_PAGES_ON_DISK (MAX_TOTAL_PAGES - MAX_PSYC_PAGES) // max total memory pages per process
