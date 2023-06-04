@@ -318,6 +318,7 @@ fork(void)
   }
 
   // Copy user memory from parent to child.
+
   if(uvmcopy(np, p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
@@ -840,6 +841,8 @@ uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, in
     return 0;
   
   uint64 mem;
+  // printf("number_of_physical_pages=%d, myproc()->pagetable=%p, pagetable=%p\n", number_of_physical_pages(pagetable, pages), myproc()->pagetable, pagetable);
+
   if(number_of_physical_pages(pagetable, pages) < MAX_PSYC_PAGES){
     mem = (uint64) kalloc();
     if(mem == 0){
@@ -944,6 +947,7 @@ lazy_remove_swapfile(struct proc* p)
 
 int deep_copy_pages(struct proc *p, struct proc *np)
 {
+
   char* buffer = kalloc();
   for (int i = 0; i < MAX_PAGES_ON_DISK; i++)
   {

@@ -182,10 +182,10 @@ page_fault(uint64 va)
     panic("segfault");
   }
  
-	if(pte && (*pte & PTE_PG))
-	{
-		swap_in_by_va(p, va);
-	}
+	// if(pte && (*pte & PTE_PG))
+	// {
+	// 	swap_in_by_va(p, va);
+	// }
   else 
   {
     if(pte == 0) {
