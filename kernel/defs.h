@@ -127,6 +127,10 @@ int             fork_memory(struct proc*);
 int             deep_copy_pages(struct proc*, struct proc*);
 uint64          vaof(struct proc*, pte_t*);
 pte_t *         superwalk(struct proc*, uint64);
+uint64          swap_in_to_memory(struct proc*, uint64);
+uint64          swap_out_to_disk(pagetable_t, struct pageondisk*);
+uint64          get_time_by_pte(pagetable_t pagetable, pte_t* p_pte);
+void            init_pagetable_time(void);
 
 
 
@@ -218,3 +222,18 @@ uint64 random_in_range(uint64 min, uint64 max);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+#define NFUA 1
+#define LAPA 2
+#define SCFIFO 3
+#define NONE 4
+
+#if SWAP_ALGO == NFUA
+  #define SWAP_POLICY NFUA
+#elif SWAP_ALGO == LAPA
+  #define SWAP_POLICY LAPA
+#elif SWAP_ALGO == SCFIFO
+  #define SWAP_POLICY SCFIFO
+#else
+  #define SWAP_POLICY NONE
+#endif

@@ -184,7 +184,12 @@ page_fault(uint64 va)
  
 	if(pte && (*pte & PTE_PG))
 	{
-		swap_in_by_va(p, va);
+    if(SWAP_POLICY == NONE)
+		  swap_in_by_va(p, va);
+    
+    if(SWAP_POLICY == NFUA || SWAP_POLICY == LAPA || SWAP_POLICY == SCFIFO)
+      swap_in_to_memory(p, va);
+    
 	}
   else 
   {

@@ -191,19 +191,6 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       kfree((void*)pa);
     }
 
-    // struct page *page = get_page_by_address(a);
-    // // if va in memory, delete it
-    // if (do_free && page->pagelocation == PHYSICAL)
-		// {
-		// 	uint64 pa = PTE2PA(*pte);
-		// 	kfree((void*)pa);
-    // 	initCurrPage(page);
-    // } 
-		// else if (page->pagelocation == VIRTUAL)
-		// {
-    // 	initCurrPage(page);
-		// }
-
     *pte = 0;
   }
 }
@@ -315,6 +302,7 @@ uvmcopy(struct proc* p, pagetable_t old, pagetable_t new, uint64 sz)
 			if ((new_pte = walk(new, i, 1)) == 0)
 				goto err;
 			*new_pte |= PTE_FLAGS(*pte);
+      add_pte_to_pagetable_times(new, new_pte);
 			continue;
 		}
 

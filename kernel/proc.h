@@ -28,6 +28,17 @@ struct cpu {
   int intena;                 // Were interrupts enabled before push_off()?
 };
 
+struct pte_time {
+  pte_t* pte;
+  uint64 time;
+};
+
+struct pagetable_times {
+  pagetable_t pagetable;
+  uint64 scfifo_time_counter;
+  struct pte_time times[MAX_TOTAL_PAGES]
+};
+
 extern struct cpu cpus[NCPU];
 
 // per-process data for the trap handling code in trampoline.S.
@@ -108,8 +119,9 @@ struct proc {
   char name[16];               // Process name (debugging)
   struct pageondisk pagesondisk[MAX_PAGES_ON_DISK];
   int total_number_of_pages;
-  
+
 
 
   struct file *swapFile;
+  
 };

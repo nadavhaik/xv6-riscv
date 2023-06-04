@@ -10,6 +10,8 @@ struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
 
+struct pagetable_times pagetable_times[MAX_PAGETABLE_TIMES];
+
 struct proc *initproc;
 
 int nextpid = 1;
@@ -115,6 +117,23 @@ void pagesinit(struct proc *p){
   }
 }
 
+
+void init_pagetable_time(){
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    pagetable_times[i].pagetable = 0;
+    pagetable_times[i].scfifo_time_counter = 0;
+    for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+      pagetable_times[i].times[j].pte = 0;
+      if(SWAP_POLICY == NFUA)
+        pagetable_times[i].times[j].time = 0;
+      
+      if(SWAP_POLICY == LAPA)
+        pagetable_times[i].times[j].time = (uint64)(~0);
+      
+    }
+  }
+}
+
 uint64 diskoffset_of_va(struct proc* p, uint64 va)
 {
   for(struct pageondisk* page = p->pagesondisk; page < &p->pagesondisk[MAX_PAGES_ON_DISK]; page++)
@@ -123,6 +142,39 @@ uint64 diskoffset_of_va(struct proc* p, uint64 va)
       return page->fileoffset;
   }
   return -1;
+}
+
+void add_pagetable_to_pagetable_times(pagetable_t pagetable)
+{
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == 0){
+      pagetable_times[i].pagetable = pagetable;
+      return;
+    }
+  }
+  panic("couldn't add_pagetable_to_pagetable_times");
+}
+
+void remove_pagetable_from_pagetable_times(pagetable_t pagetable){
+  int found = 0;
+  for(int i = 0; i < MAX_PAGETABLE_TIMES && !found; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pagetable_times[i].times[j].pte = 0;
+        if(SWAP_POLICY == NFUA)
+          pagetable_times[i].times[j].time = 0;
+        
+        if(SWAP_POLICY == LAPA)
+          pagetable_times[i].times[j].time = (uint64)(~0);
+        
+        if(SWAP_POLICY == SCFIFO)
+          pagetable_times[i].scfifo_time_counter = 0;
+    
+        found = 1;
+      }
+    }
+  }
+  return;
 }
 
 // Look in the process table for an UNUSED proc.
@@ -148,7 +200,6 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
-
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -172,7 +223,7 @@ found:
 
   p->swapFile = 0;
   pagesinit(p);
-
+  add_pagetable_to_pagetable_times(p->pagetable);
 
   return p;
 }
@@ -239,6 +290,7 @@ proc_pagetable(struct proc *p)
 void
 proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
+  remove_pagetable_from_pagetable_times(pagetable);
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
   uvmfree(pagetable, sz);
@@ -495,6 +547,10 @@ scheduler(void)
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
+        
+        if(SWAP_POLICY == NFUA || SWAP_POLICY == LAPA)
+          update_time(p);
+        
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
@@ -716,6 +772,7 @@ procdump(void)
   }
 }
 
+
 pte_t* random_physical_page(pagetable_t pagetable, struct pageondisk* pages)
 {
   pte_t* ptes[MAX_TOTAL_PAGES];
@@ -848,23 +905,24 @@ uint64 add_page(struct pageondisk* pages, pagetable_t pagetable, uint64 size, in
       return 0;
     }
   } else {
-    mem = move_random_page_to_disk(pagetable, pages);
+    if(SWAP_POLICY == NONE) 
+      mem = move_random_page_to_disk(pagetable, pages);
+    if(SWAP_POLICY == NFUA || SWAP_POLICY == LAPA || SWAP_POLICY == SCFIFO)
+      mem = swap_out_to_disk(pagetable, pages);
+
     if(mem == 0)
      return 0;
   }
   
-
   if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
     kfree(mem);
     uvmdealloc(pagetable, a, PGROUNDUP(oldsz));
     return 0;
   }
-  memset(mem, 0, PGSIZE);
+  memset(mem, 0, PGSIZE);  
 
-
-
-  // printf("pid: %d: adding page at %p\n", p->pid, mem);
-  
+  pte_t* pte = walk(pagetable, a, 0);
+  add_pte_to_pagetable_times(pagetable, pte);
 
   return mem;
 }
@@ -907,8 +965,6 @@ uint64 swap_in_by_va(struct proc* p, uint64 va)
 
   *pte &= ~PTE_PG;
   *pte |= PTE_V;
-
-  
 
   return 0;
 }
@@ -953,11 +1009,9 @@ int deep_copy_pages(struct proc *p, struct proc *np)
 
     int offset = page->fileoffset;
     
-
     if(readFromSwapFile(p, buffer, offset, PGSIZE) < 0) return -1;
     if(writeToSwapFile(np, buffer, offset, PGSIZE) < 0) return -1;
-      
-    
+
   }
   kfree(buffer);
   return 0;
@@ -977,31 +1031,6 @@ uint64 vaof(struct proc* p, pte_t* pte)
 {
   return (uint64)pte;
 }
-
-// void removePages(struct proc* p, pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
-// {
-//   uint64 a;
-//   for (a = va; a < va + npages * PGSIZE; a += PGSIZE){
-//     int deleted = 0;
-
-
-//     for(struct pageondisk* page = &p->pagesondisk[MAX_PAGES_ON_DISK - 1]; page > p->pagesondisk && !deleted; page--) {
-//       if(page->pagelocation == PHYSICAL && page->address.memaddress == a && pagetable == p->pagetable && do_free){
-//         initCurrPage(page);
-//         deleted = 1;
-//       }
-//       else if(page->pagelocation == VIRTUAL && page->address.fileoffset == a && pagetable == p->pagetable){
-//         initCurrPage(page);
-//         deleted = 1;
-//       }
-    
-//       if(number_of_used_pages(p) == 0){
-//         lazy_remove_swapfile(p);
-//         return;
-//       }
-//     }
-//   }
-// }
 
 
 // Allocate PTEs and physical memory to grow process from oldsz to
@@ -1029,3 +1058,226 @@ uvmalloc(pagetable_t pagetable, struct pageondisk* diskpages, uint64 oldsz, uint
   }
   return newsz;
 }
+
+// -------------------- task3 ---------------------
+
+void add_pte_to_pagetable_times(pagetable_t pagetable, pte_t* pte){
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        if(pagetable_times[i].times[j].pte == 0){
+          pagetable_times[i].times[j].pte = pte;
+          if(SWAP_POLICY == NFUA)
+            pagetable_times[i].times[j].time = 0;
+          
+          if(SWAP_POLICY == LAPA)
+            pagetable_times[i].times[j].time = (uint64)(~0);
+          return;
+          printf("added pte: %p", pte);
+        }
+      }
+    }
+  }
+}
+
+// this function is called from the scheduler.
+void
+update_time(pagetable_t pagetable){
+  pte_t* pte;
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pte = pagetable_times[i].times[j].pte;
+        if(pte && (*pte & PTE_V)){
+          pagetable_times[i].times[j].time >>= 1;
+          if((*pte & PTE_A)){
+            pagetable_times[i].times[j].time |= (1 << (sizeof(int) * 8 - 1));
+            (*pte) &= ~PTE_A;
+          }
+        }
+      }
+    }
+  }
+}
+
+pte_t* get_lowest_time_pte(pagetable_t pagetable){
+  pte_t* pte;
+  pte_t* min_pte;
+  uint64 min_time = ~0;
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pte = pagetable_times[i].times[j].pte;
+        if(pagetable_times[i].times[j].time < min_time && (*pte & PTE_V)){
+          min_time = pagetable_times[i].times[j].time;
+          min_pte = pagetable_times[i].times[j].pte;
+        }
+      }
+    }
+  }
+  return min_pte;
+}
+
+// return the page to swap by nfua algorithm
+pte_t*
+get_pte_by_nfua(pagetable_t pagetable){
+  return get_lowest_time_pte(pagetable);
+}
+
+// return the page to swap by lapa algorithm
+pte_t*
+get_pte_by_lapa(pagetable_t pagetable){
+  pte_t* pte;
+  pte_t* pte_to_move_out;
+  int min_ones = 65; // maximum possible is 64
+   for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pte = pagetable_times[i].times[j].pte;
+        if(pte && (*pte & PTE_V)){
+          int counter = pagetable_times[i].times[j].time;
+          int ones = 0;
+
+          while(counter != 0){
+            // ones = counter % 2 ? ones + 1 : ones;
+            ones += counter & 1;
+            counter >>= 1;
+          }
+
+          if(ones < min_ones){
+            min_ones = ones;
+            pte_to_move_out = pagetable_times[i].times[j].pte;
+          }
+        }
+      }
+    }
+  }
+  return pte_to_move_out;
+}
+
+uint64
+get_time_by_pte(pagetable_t pagetable, pte_t* p_pte){
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      return pagetable_times[i].scfifo_time_counter;
+      }
+    }
+  return -1;
+}
+
+void
+update_time_by_pte(pagetable_t pagetable, pte_t* p_pte){
+  pte_t* pte;
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pte = pagetable_times[i].times[j].pte;
+        pagetable_times[i].scfifo_time_counter++;
+        if(pte == p_pte && (pte && (*pte & PTE_V))){
+          pagetable_times[i].times[j].time = pagetable_times[i].scfifo_time_counter;
+        }
+      }
+    }
+  }
+}
+
+
+void
+reset_time_by_pte(pagetable_t pagetable, pte_t* p_pte){
+  pte_t* pte;
+  for(int i = 0; i < MAX_PAGETABLE_TIMES; i++){
+    if(pagetable_times[i].pagetable == pagetable){
+      for(int j = 0; j < MAX_TOTAL_PAGES; j++){
+        pte = pagetable_times[i].times[j].pte;
+        if(pte == p_pte && (pte && (*pte & PTE_V))){
+          pagetable_times[i].times[j].time = 0;
+          return;
+        }
+      }
+    }
+  }
+}
+
+
+// return the page to swap by scfifo algorithm
+pte_t*
+get_pte_by_scfifo(pagetable_t pagetable){
+  pte_t* pte;
+
+  for(;;){
+    pte = get_lowest_time_pte(pagetable);
+  
+    if(get_time_by_pte(pagetable, pte) != 0)
+      return pte;
+
+    update_time_by_pte(pagetable, pte);
+    
+  }
+}
+
+pte_t*
+get_page_to_swap_for(pagetable_t pagetable)
+{
+	if(SWAP_POLICY == NONE)
+    return 0; // defualt
+  
+  if(SWAP_POLICY == NFUA)
+    return get_pte_by_nfua(pagetable);
+  
+  if(SWAP_POLICY == LAPA)
+    return get_pte_by_lapa(pagetable);
+  
+  if(SWAP_POLICY == SCFIFO)
+    return get_pte_by_scfifo(pagetable);
+  
+}
+
+// uint64 move_page_to_disk(pagetable_t pagetable, struct pageondisk *pages) 
+uint64 swap_out_to_disk(pagetable_t pagetable, struct pageondisk *pages) 
+{
+  pte_t* pte = get_page_to_swap_for(pagetable);
+  uint64 pa = PTE2PA(*pte);
+  struct pageondisk* diskpage = get_diskspace(pages, (uint64)pte);
+  
+  if(diskpage == 0) {
+    panic("vmem file is full!");
+  }
+  diskpage->pa = pa;
+  diskpage->flags = PTE_FLAGS(*pte);
+
+  uint64 offset = diskpage->fileoffset;
+
+  lazy_write_to_swapfile(myproc(), (char*) pa, diskpage->fileoffset, PGSIZE);
+
+  *pte |= PTE_PG;
+  *pte &= ~PTE_V;
+
+  uint64 pte_content = *pte;
+
+
+  return PTE2PA(pte_content);
+}
+
+
+uint64 swap_in_to_memory(struct proc* p, uint64 va)
+{
+	va = PGROUNDDOWN(va);
+  uint64 pa = swap_out_to_disk(p->pagetable, p->pagesondisk);
+  struct pageondisk* page = get_diskspace(p->pagesondisk, va);
+  lazy_read_from_swapfile(p, pa, page->fileoffset, PGSIZE);
+  if(!mappages(p->pagetable, va, PGSIZE, pa, page->flags))
+    panic("swap_in_to_memory");
+  
+  pte_t* pte = walk(p->pagetable, va, 0);
+
+  *pte &= ~PTE_PG;
+  *pte |= PTE_V;
+
+  reset_time_by_pte(p->pagetable, pte);
+  
+
+  return 0;
+}
+
+
+// ---------------- end task3 ----------------------
