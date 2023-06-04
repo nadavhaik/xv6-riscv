@@ -725,7 +725,7 @@ pte_t* random_physical_page(pagetable_t pagetable, struct pageondisk* pages)
   for(int i=0; i<total_pages; i++)
   {
     pte_t* pte = &pagetable[i];
-    if(!(*pte & PTE_PG))
+    if(pte && !(*pte & PTE_PG))
     {
       ptes[arrsize++] = pte;
     }
@@ -818,7 +818,7 @@ uint64 move_random_page_to_disk(pagetable_t pagetable, struct pageondisk *pages)
 pte_t* last_used_page()
 {
   struct proc* p = myproc();
-  return &p->pagetable[p->total_number_of_pages - 1];
+  return &p->pagetable[number_of_used_pages(p->pagetable) - 1];
 }
 
 struct proc* proc_of_pte(pagetable_t pagetable)
