@@ -181,7 +181,6 @@ filewrite(struct file *f, uint64 addr, int n)
   return ret;
 }
 
-// ASSINGMENT 4
 int 
 fileseek( struct file * f , int offset , int whence ){
   

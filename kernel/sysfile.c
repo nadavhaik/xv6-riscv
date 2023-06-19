@@ -94,7 +94,6 @@ sys_write(void)
   return filewrite(f, p, n);
 }
 
-// ASSINGMENT 4
 uint64 
 sys_seek(void){
   

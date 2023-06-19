@@ -1,5 +1,4 @@
 
-// ASSINGMENT 4
 
 #include <stdarg.h>
 

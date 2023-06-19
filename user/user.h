@@ -22,7 +22,6 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-// ASSINGMENT 4
 int seek(int fd, int offset, int whence);
 
 // ulib.c
