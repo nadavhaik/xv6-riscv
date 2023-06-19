@@ -1,7 +1,24 @@
 {
     "files.associations": {
+        "*.scm": "scheme",
         "types.h": "c",
         "riscv.h": "c",
         "defs.h": "c",
+        "climits": "c",
+        "cmath": "c",
+        "compare": "c",
+        "concepts": "c",
+        "cstdarg": "c",
+        "cstdio": "c",
+        "cstdlib": "c",
+        "exception": "c",
+        "type_traits": "c",
+        "limits": "c",
+        "new": "c",
+        "*.tcc": "c",
+        "cstdint": "c",
+        "typeinfo": "c",
+        "fcntl.h": "c",
+        "sleeplock.h": "c"
     },
 }

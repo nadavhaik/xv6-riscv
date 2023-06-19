@@ -38,3 +38,6 @@ struct devsw {
 extern struct devsw devsw[];
 
 #define CONSOLE 1
+// ASSINGMENT 4
+#define RANDOM  2
+

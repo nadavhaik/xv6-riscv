@@ -12,6 +12,7 @@
 #include "file.h"
 #include "stat.h"
 #include "proc.h"
+#include "fcntl.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -180,3 +181,31 @@ filewrite(struct file *f, uint64 addr, int n)
   return ret;
 }
 
+// ASSINGMENT 4
+int 
+fileseek( struct file * f , int offset , int whence ){
+  
+  int size = f->ip->size;
+
+  int new;
+  
+  int old = (int)f->off;
+
+  switch (whence)
+  {
+  case SEEK_SET:
+    new = offset;
+    break;
+  case SEEK_CUR:
+    new = old + offset;
+    break;
+  default:
+    return -1;
+  }
+
+  new = new < 0 ? 0 : new > size ? size : new;
+  
+  f->off = (uint)new;
+  
+  return 0;
+} 

@@ -94,6 +94,32 @@ sys_write(void)
   return filewrite(f, p, n);
 }
 
+// ASSINGMENT 4
+uint64 
+sys_seek(void){
+  
+  struct proc* p = myproc();
+
+  int fd;
+  argint(0, &fd);
+  if( fd < 0 || fd >= NOFILE) return -1;
+  
+  int off;
+  argint(1, &off);
+  
+  int whence;
+  argint(2, &whence);
+  
+  struct file* file = p->ofile[fd];
+  if( file == 0 || file->type != FD_INODE) return -1;
+
+
+
+  return (uint64)fileseek(file, off, whence);
+} 
+
+
+
 uint64
 sys_close(void)
 {
